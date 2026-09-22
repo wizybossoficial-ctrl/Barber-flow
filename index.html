@@ -149,6 +149,8 @@ const DICT = {
     createShopTitle: "Cadastre sua Barbearia",
     shopNameLabel: "Nome da barbearia",
     shopAddressLabel: "Endereço",
+    shopImageLabel: "Foto da barbearia",
+    shopImageHint: "JPG, PNG ou WEBP · máximo 5 MB",
     createShopBtn: "Criar Barbearia",
     barbersTitle: "Barbeiros",
     newBarberName: "Nome do barbeiro",
@@ -241,6 +243,8 @@ const DICT = {
     createShopTitle: "Register Your Barbershop",
     shopNameLabel: "Barbershop name",
     shopAddressLabel: "Address",
+    shopImageLabel: "Barbershop photo",
+    shopImageHint: "JPG, PNG or WEBP · maximum 5 MB",
     createShopBtn: "Create Barbershop",
     barbersTitle: "Barbers",
     newBarberName: "Barber name",
@@ -333,6 +337,8 @@ const DICT = {
     createShopTitle: "Enregistrez votre Salon",
     shopNameLabel: "Nom du salon",
     shopAddressLabel: "Adresse",
+    shopImageLabel: "Photo du salon",
+    shopImageHint: "JPG, PNG ou WEBP · 5 Mo maximum",
     createShopBtn: "Créer le Salon",
     barbersTitle: "Barbiers",
     newBarberName: "Nom du barbier",
@@ -804,6 +810,11 @@ function renderCreateShopForm() {
         <label class="text-xs text-slate-400 block mb-1">${t('shopAddressLabel')}</label>
         <input id="newShopAddress" type="text" required class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
       </div>
+      <div>
+        <label class="text-xs text-slate-400 block mb-1">${t('shopImageLabel')}</label>
+        <input id="newShopImage" type="file" accept="image/jpeg,image/png,image/webp" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm file:mr-3 file:border-0 file:rounded-md file:bg-gold file:px-3 file:py-1.5 file:font-semibold file:text-slate-950" />
+        <p class="text-xs text-slate-500 mt-1">${t('shopImageHint')}</p>
+      </div>
       <button type="submit" ${state.authLoading ? 'disabled' : ''} class="w-full gold-gradient text-slate-950 font-semibold py-2.5 rounded-xl hover:brightness-110 transition text-sm disabled:opacity-60">
         ${state.authLoading ? t('loadingText') : t('createShopBtn')}
       </button>
@@ -1234,9 +1245,21 @@ async function handleAuthSubmit() {
 async function handleCreateShop() {
   const name = document.getElementById('newShopName').value.trim();
   const address = document.getElementById('newShopAddress').value.trim();
+  const imageFile = document.getElementById('newShopImage').files[0];
   if (!name || !address) { state.authError = t('fillFields'); render(); return; }
+  if (imageFile && (!imageFile.type.startsWith('image/') || imageFile.size > 5 * 1024 * 1024)) {
+    state.authError = t('shopImageHint'); render(); return;
+  }
   state.authError = ''; state.authLoading = true; render();
-  const { data, error } = await sb.from('shops').insert({ owner_id: state.session.user.id, name, address, rating: 5.0 }).select().single();
+  let image = null;
+  if (imageFile) {
+    const extension = imageFile.name.split('.').pop().toLowerCase();
+    const path = `${state.session.user.id}/${crypto.randomUUID()}.${extension}`;
+    const upload = await sb.storage.from('shop-images').upload(path, imageFile, { contentType: imageFile.type, upsert: false });
+    if (upload.error) { state.authLoading = false; state.authError = upload.error.message; render(); return; }
+    image = sb.storage.from('shop-images').getPublicUrl(path).data.publicUrl;
+  }
+  const { data, error } = await sb.from('shops').insert({ owner_id: state.session.user.id, name, address, image, rating: 5.0 }).select().single();
   state.authLoading = false;
   if (error) { state.authError = error.message; render(); return; }
   state.myShop = data;
