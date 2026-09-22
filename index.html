@@ -147,6 +147,8 @@ const DICT = {
     authOwnerTitle: "Acesso da Barbearia",
     authOwnerSubtitle: "Entre ou crie uma conta para gerenciar sua barbearia.",
     createShopTitle: "Cadastre sua Barbearia",
+    editShop: "Editar barbearia",
+    shopUpdated: "Barbearia atualizada.",
     shopNameLabel: "Nome da barbearia",
     shopAddressLabel: "Endereço",
     shopImageLabel: "Foto da barbearia",
@@ -241,6 +243,8 @@ const DICT = {
     authOwnerTitle: "Barbershop Access",
     authOwnerSubtitle: "Log in or create an account to manage your barbershop.",
     createShopTitle: "Register Your Barbershop",
+    editShop: "Edit barbershop",
+    shopUpdated: "Barbershop updated.",
     shopNameLabel: "Barbershop name",
     shopAddressLabel: "Address",
     shopImageLabel: "Barbershop photo",
@@ -335,6 +339,8 @@ const DICT = {
     authOwnerTitle: "Accès Salon",
     authOwnerSubtitle: "Connectez-vous ou créez un compte pour gérer votre salon.",
     createShopTitle: "Enregistrez votre Salon",
+    editShop: "Modifier le salon",
+    shopUpdated: "Salon mis à jour.",
     shopNameLabel: "Nom du salon",
     shopAddressLabel: "Adresse",
     shopImageLabel: "Photo du salon",
@@ -372,6 +378,9 @@ const state = {
   view: 'client', // 'client' | 'dashboard'
   bookingCtx: null, // { shopId, services, barbers }
   crmEditingId: null,
+  shopEditing: false,
+  shopEditError: '',
+  shopSaving: false,
   confirmDialog: null, // { title, message, onConfirm, id, token }
   shopSearch: '',
   toast: null,
@@ -496,6 +505,7 @@ function render() {
     ${renderFooter()}
     ${state.bookingCtx ? renderBookingModal() : ''}
     ${state.crmEditingId !== null ? renderCrmModal() : ''}
+    ${state.shopEditing ? renderShopEditModal() : ''}
     ${state.confirmDialog ? renderConfirmDialog() : ''}
     ${renderToast()}
   `;
@@ -843,8 +853,15 @@ function renderDashboardView() {
   return `
   <section class="fade-in">
     <div class="mb-8">
-      <h2 class="font-heading text-2xl sm:text-3xl font-extrabold mb-1">${shop.name} <span class="text-gold">· ${t('navDashboard')}</span></h2>
-      <p class="text-slate-400 text-sm">${t('yourShop')}</p>
+      <div class="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 class="font-heading text-2xl sm:text-3xl font-extrabold mb-1">${shop.name} <span class="text-gold">· ${t('navDashboard')}</span></h2>
+          <p class="text-slate-400 text-sm">${t('yourShop')}</p>
+        </div>
+        <button data-action="edit-shop" class="gold-gradient text-slate-950 font-semibold text-sm px-4 py-2.5 rounded-xl hover:brightness-110 transition">
+          <i class="fa-solid fa-pen mr-1.5"></i>${t('editShop')}
+        </button>
+      </div>
     </div>
 
     <!-- METRICS -->
@@ -1004,6 +1021,41 @@ function renderCrmModal() {
   </div>`;
 }
 
+function renderShopEditModal() {
+  const shop = state.myShop;
+  if (!shop) return '';
+  return `
+  <div class="fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4" data-action="close-shop-edit-backdrop">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6 fade-in" role="dialog" aria-modal="true" aria-labelledby="shopEditTitle" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between mb-5">
+        <h3 id="shopEditTitle" class="font-heading text-xl font-bold">${t('editShop')}</h3>
+        <button data-action="close-shop-edit" aria-label="${t('close')}" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+      </div>
+      ${state.shopEditError ? `<div class="mb-4 text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">${state.shopEditError}</div>` : ''}
+      <form id="shopEditForm" class="space-y-4">
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">${t('shopNameLabel')}</label>
+          <input id="editShopName" type="text" required value="${shop.name || ''}" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">${t('shopAddressLabel')}</label>
+          <input id="editShopAddress" type="text" required value="${shop.address || ''}" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">${t('shopImageLabel')}</label>
+          ${shop.image ? `<img src="${shop.image}" alt="${shop.name}" class="w-full h-32 object-cover rounded-lg mb-2" />` : ''}
+          <input id="editShopImage" type="file" accept="image/jpeg,image/png,image/webp" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm file:mr-3 file:border-0 file:rounded-md file:bg-gold file:px-3 file:py-1.5 file:font-semibold file:text-slate-950" />
+          <p class="text-xs text-slate-500 mt-1">${t('shopImageHint')}</p>
+        </div>
+        <div class="flex gap-3 pt-2">
+          <button type="button" data-action="close-shop-edit" class="flex-1 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 transition text-sm font-medium">${t('close')}</button>
+          <button type="submit" ${state.shopSaving ? 'disabled' : ''} class="flex-1 gold-gradient text-slate-950 font-semibold py-2.5 rounded-xl hover:brightness-110 transition text-sm disabled:opacity-60">${state.shopSaving ? t('loadingText') : t('save')}</button>
+        </div>
+      </form>
+    </div>
+  </div>`;
+}
+
 /* =========================================================
    EVENT HANDLERS
 ========================================================= */
@@ -1038,6 +1090,12 @@ function attachHandlers() {
 
   app.querySelectorAll('[data-action="close-crm"], [data-action="close-crm-backdrop"]').forEach(el =>
     el.addEventListener('click', () => { state.crmEditingId = null; render(); }));
+
+  app.querySelectorAll('[data-action="close-shop-edit"], [data-action="close-shop-edit-backdrop"]').forEach(el =>
+    el.addEventListener('click', () => { state.shopEditing = false; state.shopEditError = ''; render(); }));
+
+  app.querySelectorAll('[data-action="edit-shop"]').forEach(el =>
+    el.addEventListener('click', () => { state.shopEditing = true; state.shopEditError = ''; render(); }));
 
   app.querySelectorAll('[data-action="edit-crm"]').forEach(el =>
     el.addEventListener('click', () => { state.crmEditingId = el.dataset.id; render(); }));
@@ -1118,6 +1176,9 @@ function attachHandlers() {
 
   const crmForm = document.getElementById('crmForm');
   if (crmForm) crmForm.addEventListener('submit', (e) => { e.preventDefault(); handleSaveCrm(); });
+
+  const shopEditForm = document.getElementById('shopEditForm');
+  if (shopEditForm) shopEditForm.addEventListener('submit', (e) => { e.preventDefault(); handleSaveShop(); });
 
   app.querySelectorAll('[data-action="owner-complete-appointment"]').forEach(el =>
     el.addEventListener('click', () => handleOwnerCompleteAppointment(el.dataset.id)));
@@ -1221,6 +1282,35 @@ async function handleSaveCrm() {
   loadDashboardData();
 }
 
+async function handleSaveShop() {
+  const name = document.getElementById('editShopName').value.trim();
+  const address = document.getElementById('editShopAddress').value.trim();
+  const imageFile = document.getElementById('editShopImage').files[0];
+  if (!name || !address) { state.shopEditError = t('fillFields'); render(); return; }
+  if (imageFile && (!imageFile.type.startsWith('image/') || imageFile.size > 5 * 1024 * 1024)) {
+    state.shopEditError = t('shopImageHint'); render(); return;
+  }
+
+  state.shopEditError = ''; state.shopSaving = true; render();
+  let image = state.myShop.image || null;
+  if (imageFile) {
+    const extension = imageFile.name.split('.').pop().toLowerCase();
+    const path = `${state.session.user.id}/${crypto.randomUUID()}.${extension}`;
+    const upload = await sb.storage.from('shop-images').upload(path, imageFile, { contentType: imageFile.type, upsert: false });
+    if (upload.error) { state.shopSaving = false; state.shopEditError = upload.error.message; render(); return; }
+    image = sb.storage.from('shop-images').getPublicUrl(path).data.publicUrl;
+  }
+
+  const { data, error } = await sb.from('shops').update({ name, address, image }).eq('id', state.myShop.id).eq('owner_id', state.session.user.id).select().single();
+  state.shopSaving = false;
+  if (error) { state.shopEditError = error.message; render(); return; }
+  state.myShop = data;
+  state.shopEditing = false;
+  render();
+  showToast(t('shopUpdated'));
+  loadShops();
+}
+
 async function handleAuthSubmit() {
   const email = document.getElementById('authEmail').value.trim();
   const password = document.getElementById('authPassword').value;
@@ -1275,6 +1365,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   if (state.confirmDialog) { state.confirmDialog = null; render(); }
   else if (state.crmEditingId !== null) { state.crmEditingId = null; render(); }
+  else if (state.shopEditing) { state.shopEditing = false; state.shopEditError = ''; render(); }
   else if (state.bookingCtx) { state.bookingCtx = null; render(); }
 });
 
