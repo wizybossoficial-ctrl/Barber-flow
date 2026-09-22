@@ -160,6 +160,10 @@ const DICT = {
     shopAddressLabel: "Endereço",
     shopImageLabel: "Foto da barbearia",
     shopImageHint: "JPG, PNG ou WEBP · máximo 5 MB",
+    openingHours: "Horário de funcionamento",
+    openingTime: "Abertura",
+    closingTime: "Fechamento",
+    hoursNotSet: "Horário não informado",
     createShopBtn: "Criar Barbearia",
     barbersTitle: "Barbeiros",
     newBarberName: "Nome do barbeiro",
@@ -264,6 +268,10 @@ const DICT = {
     shopAddressLabel: "Address",
     shopImageLabel: "Barbershop photo",
     shopImageHint: "JPG, PNG or WEBP · maximum 5 MB",
+    openingHours: "Opening hours",
+    openingTime: "Opening",
+    closingTime: "Closing",
+    hoursNotSet: "Hours not set",
     createShopBtn: "Create Barbershop",
     barbersTitle: "Barbers",
     newBarberName: "Barber name",
@@ -367,6 +375,10 @@ const DICT = {
     shopAddressLabel: "Adresse",
     shopImageLabel: "Photo du salon",
     shopImageHint: "JPG, PNG ou WEBP · 5 Mo maximum",
+    openingHours: "Heures d'ouverture",
+    openingTime: "Ouverture",
+    closingTime: "Fermeture",
+    hoursNotSet: "Horaires non renseignés",
     createShopBtn: "Créer le Salon",
     barbersTitle: "Barbiers",
     newBarberName: "Nom du barbier",
@@ -777,6 +789,7 @@ function renderShopPage() {
           <div>
             <h2 class="font-heading text-2xl sm:text-3xl font-extrabold mb-2">${shop.name}</h2>
             <p class="text-sm text-slate-400"><i class="fa-solid fa-location-dot mr-2 text-gold"></i>${shop.address}</p>
+              <p class="text-sm text-slate-400 mt-2"><i class="fa-regular fa-clock mr-2 text-gold"></i>${shop.opening_time && shop.closing_time ? `${shop.opening_time.slice(0, 5)} - ${shop.closing_time.slice(0, 5)}` : t('hoursNotSet')}</p>
           </div>
           <div class="flex items-center gap-1 text-gold font-semibold"><i class="fa-solid fa-star"></i>${shop.rating}</div>
         </div>
@@ -1150,6 +1163,13 @@ function renderShopEditModal() {
           <input id="editShopAddress" type="text" required value="${shop.address || ''}" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
         </div>
         <div>
+          <p class="text-xs text-slate-400 block mb-2">${t('openingHours')}</p>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="text-xs text-slate-500">${t('openingTime')}<input id="editOpeningTime" type="time" value="${shop.opening_time || ''}" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-gold" /></label>
+            <label class="text-xs text-slate-500">${t('closingTime')}<input id="editClosingTime" type="time" value="${shop.closing_time || ''}" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-gold" /></label>
+          </div>
+        </div>
+        <div>
           <label class="text-xs text-slate-400 block mb-1">${t('shopImageLabel')}</label>
           ${shop.image ? `<img src="${shop.image}" alt="${shop.name}" class="w-full h-32 object-cover rounded-lg mb-2" />` : ''}
           <input id="editShopImage" type="file" accept="image/jpeg,image/png,image/webp" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm file:mr-3 file:border-0 file:rounded-md file:bg-gold file:px-3 file:py-1.5 file:font-semibold file:text-slate-950" />
@@ -1399,8 +1419,11 @@ async function handleSaveCrm() {
 async function handleSaveShop() {
   const name = document.getElementById('editShopName').value.trim();
   const address = document.getElementById('editShopAddress').value.trim();
+  const openingTime = document.getElementById('editOpeningTime').value || null;
+  const closingTime = document.getElementById('editClosingTime').value || null;
   const imageFile = document.getElementById('editShopImage').files[0];
   if (!name || !address) { state.shopEditError = t('fillFields'); render(); return; }
+  if (openingTime && closingTime && openingTime >= closingTime) { state.shopEditError = `${t('openingTime')} < ${t('closingTime')}`; render(); return; }
   if (imageFile && (!imageFile.type.startsWith('image/') || imageFile.size > 5 * 1024 * 1024)) {
     state.shopEditError = t('shopImageHint'); render(); return;
   }
@@ -1415,7 +1438,7 @@ async function handleSaveShop() {
     image = sb.storage.from('shop-images').getPublicUrl(path).data.publicUrl;
   }
 
-  const { data, error } = await sb.from('shops').update({ name, address, image }).eq('id', state.myShop.id).eq('owner_id', state.session.user.id).select().single();
+  const { data, error } = await sb.from('shops').update({ name, address, image, opening_time: openingTime, closing_time: closingTime }).eq('id', state.myShop.id).eq('owner_id', state.session.user.id).select().single();
   state.shopSaving = false;
   if (error) { state.shopEditError = error.message; render(); return; }
   state.myShop = data;
