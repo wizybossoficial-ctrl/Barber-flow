@@ -77,6 +77,12 @@ const DICT = {
     bookNow: "Agendar",
     ratingLabel: "avaliação",
     barberCount: "barbeiros",
+    viewShop: "Ver barbearia",
+    backToShops: "Voltar às barbearias",
+    shopServices: "Serviços disponíveis",
+    shopBarbers: "Nossa equipe",
+    noServicesYet: "Nenhum serviço cadastrado ainda.",
+    noBarbersOnShop: "Nenhum barbeiro cadastrado ainda.",
     addressLabel: "Endereço",
     cancel: "Cancelar",
     confirm: "Confirmar",
@@ -173,6 +179,13 @@ const DICT = {
     noAppointments: "You don't have any appointments yet.",
     bookNow: "Book Now",
     ratingLabel: "rating",
+    barberCount: "barbers",
+    viewShop: "View shop",
+    backToShops: "Back to shops",
+    shopServices: "Available services",
+    shopBarbers: "Our team",
+    noServicesYet: "No services registered yet.",
+    noBarbersOnShop: "No barbers registered yet.",
     barberCount: "barbers",
     addressLabel: "Address",
     cancel: "Cancel",
@@ -271,6 +284,12 @@ const DICT = {
     bookNow: "Réserver",
     ratingLabel: "note",
     barberCount: "barbiers",
+    viewShop: "Voir le salon",
+    backToShops: "Retour aux salons",
+    shopServices: "Services disponibles",
+    shopBarbers: "Notre équipe",
+    noServicesYet: "Aucun service enregistré.",
+    noBarbersOnShop: "Aucun barbier enregistré.",
     addressLabel: "Adresse",
     cancel: "Annuler",
     confirm: "Confirmer",
@@ -381,6 +400,8 @@ const state = {
   view: 'client', // 'client' | 'dashboard'
   bookingCtx: null, // { shopId, services, barbers }
   crmEditingId: null,
+  shopPageShopId: null,
+  shopPageData: null,
   shopEditing: false,
   shopEditError: '',
   shopSaving: false,
@@ -473,6 +494,20 @@ async function openBooking(shopId) {
   }
 }
 
+async function openShopPage(shopId) {
+  state.shopPageShopId = shopId;
+  state.shopPageData = { loading: true, services: [], barbers: [] };
+  render();
+  const [{ data: services }, { data: barbers }] = await Promise.all([
+    sb.from('services').select('*').eq('shop_id', shopId).order('name'),
+    sb.from('barbers').select('*').eq('shop_id', shopId).order('name')
+  ]);
+  if (state.shopPageShopId === shopId) {
+    state.shopPageData = { loading: false, services: services || [], barbers: barbers || [] };
+    render();
+  }
+}
+
 async function ensureDashboardData() {
   if (!state.session) return;
   if (!state.myShop) {
@@ -512,7 +547,7 @@ function render() {
   app.innerHTML = `
     ${renderHeader()}
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      ${state.view === 'client' ? renderClientView() : renderDashboardView()}
+      ${state.view === 'client' ? (state.shopPageShopId ? renderShopPage() : renderClientView()) : renderDashboardView()}
     </main>
     ${renderFooter()}
     ${state.bookingCtx ? renderBookingModal() : ''}
@@ -703,15 +738,75 @@ function renderClientView() {
               </div>
               <p class="text-xs text-slate-400 mb-1"><i class="fa-solid fa-user-tie mr-1 text-gold"></i>${shop.barber_count || 0} ${t('barberCount')}</p>
               <p class="text-xs text-slate-400 mb-4"><i class="fa-solid fa-location-dot mr-1 text-gold"></i>${shop.address}</p>
-              <button data-action="open-booking" data-shop-id="${shop.id}"
-                class="w-full gold-gradient text-slate-950 font-semibold text-sm py-2.5 rounded-xl hover:brightness-110 transition shadow-lg shadow-gold/10">
-                <i class="fa-solid fa-calendar-plus mr-1.5"></i>${t('bookNow')}
-              </button>
+              <div class="grid grid-cols-2 gap-2">
+                <button data-action="view-shop" data-shop-id="${shop.id}"
+                  class="py-2.5 rounded-xl border border-slate-700 text-slate-200 font-semibold text-sm hover:border-gold hover:text-gold transition">
+                  <i class="fa-solid fa-eye mr-1.5"></i>${t('viewShop')}
+                </button>
+                <button data-action="open-booking" data-shop-id="${shop.id}"
+                  class="gold-gradient text-slate-950 font-semibold text-sm py-2.5 rounded-xl hover:brightness-110 transition shadow-lg shadow-gold/10">
+                  <i class="fa-solid fa-calendar-plus mr-1.5"></i>${t('bookNow')}
+                </button>
+              </div>
             </div>
           </div>
         `).join('')}
       </div>
       `}
+    </div>
+  </section>`;
+}
+
+function renderShopPage() {
+  const shop = state.shops.find(s => s.id === state.shopPageShopId);
+  const pageData = state.shopPageData || { loading: true, services: [], barbers: [] };
+  if (!shop) return renderClientView();
+  if (pageData.loading) return `<div class="text-center text-slate-500 py-24"><i class="fa-solid fa-circle-notch fa-spin text-3xl text-gold"></i></div>`;
+
+  return `
+  <section class="fade-in">
+    <button data-action="back-to-shops" class="text-sm text-slate-400 hover:text-gold transition mb-6">
+      <i class="fa-solid fa-arrow-left mr-2"></i>${t('backToShops')}
+    </button>
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden mb-8">
+      <div class="h-56 sm:h-72 bg-slate-800 overflow-hidden">
+        <img src="${shop.image || 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=1200&q=80'}" alt="${shop.name}" class="w-full h-full object-cover" />
+      </div>
+      <div class="p-6 sm:p-8">
+        <div class="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h2 class="font-heading text-2xl sm:text-3xl font-extrabold mb-2">${shop.name}</h2>
+            <p class="text-sm text-slate-400"><i class="fa-solid fa-location-dot mr-2 text-gold"></i>${shop.address}</p>
+          </div>
+          <div class="flex items-center gap-1 text-gold font-semibold"><i class="fa-solid fa-star"></i>${shop.rating}</div>
+        </div>
+        <div class="flex flex-wrap gap-3 mt-5 text-sm text-slate-300">
+          <span class="bg-slate-800 rounded-lg px-3 py-2"><i class="fa-solid fa-user-tie text-gold mr-2"></i>${shop.barber_count || pageData.barbers.length} ${t('barberCount')}</span>
+          <span class="bg-slate-800 rounded-lg px-3 py-2"><i class="fa-solid fa-tags text-gold mr-2"></i>${pageData.services.length} ${t('shopServices').toLowerCase()}</span>
+        </div>
+      </div>
+    </div>
+    <div class="grid gap-8 lg:grid-cols-2">
+      <div>
+        <h3 class="font-heading text-xl font-bold mb-4 flex items-center gap-2"><i class="fa-solid fa-scissors text-gold"></i>${t('shopServices')}</h3>
+        <div class="space-y-3">
+          ${pageData.services.length === 0 ? `<div class="bg-slate-900 border border-slate-800 rounded-xl p-5 text-sm text-slate-500">${t('noServicesYet')}</div>` : pageData.services.map(service => `
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center justify-between gap-4">
+              <div><p class="font-semibold">${service.name}</p><p class="text-xs text-slate-400 mt-1">${service.duration_min} ${t('minPrice')}</p></div>
+              <div class="text-right"><p class="text-gold font-heading font-bold">${money(service.price)}</p><button data-action="open-booking" data-shop-id="${shop.id}" class="text-xs text-slate-400 hover:text-gold mt-1">${t('bookNow')} <i class="fa-solid fa-arrow-right ml-1"></i></button></div>
+            </div>`).join('')}
+        </div>
+      </div>
+      <div>
+        <h3 class="font-heading text-xl font-bold mb-4 flex items-center gap-2"><i class="fa-solid fa-user-tie text-gold"></i>${t('shopBarbers')}</h3>
+        <div class="grid gap-3 sm:grid-cols-2">
+          ${pageData.barbers.length === 0 ? `<div class="bg-slate-900 border border-slate-800 rounded-xl p-5 text-sm text-slate-500">${t('noBarbersOnShop')}</div>` : pageData.barbers.map(barber => `
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center gap-3">
+              <div class="w-11 h-11 rounded-full bg-gold/15 text-gold flex items-center justify-center"><i class="fa-solid fa-user"></i></div>
+              <p class="font-semibold">${barber.name}</p>
+            </div>`).join('')}
+        </div>
+      </div>
     </div>
   </section>`;
 }
@@ -1098,6 +1193,12 @@ function attachHandlers() {
   app.querySelectorAll('[data-action="open-booking"]').forEach(el =>
     el.addEventListener('click', () => openBooking(el.dataset.shopId)));
 
+  app.querySelectorAll('[data-action="view-shop"]').forEach(el =>
+    el.addEventListener('click', () => openShopPage(el.dataset.shopId)));
+
+  app.querySelectorAll('[data-action="back-to-shops"]').forEach(el =>
+    el.addEventListener('click', () => { state.shopPageShopId = null; state.shopPageData = null; render(); }));
+
   app.querySelectorAll('[data-action="close-modal"], [data-action="close-modal-backdrop"]').forEach(el =>
     el.addEventListener('click', () => { state.bookingCtx = null; render(); }));
 
@@ -1379,6 +1480,7 @@ document.addEventListener('keydown', (e) => {
   if (state.confirmDialog) { state.confirmDialog = null; render(); }
   else if (state.crmEditingId !== null) { state.crmEditingId = null; render(); }
   else if (state.shopEditing) { state.shopEditing = false; state.shopEditError = ''; render(); }
+  else if (state.shopPageShopId) { state.shopPageShopId = null; state.shopPageData = null; render(); }
   else if (state.bookingCtx) { state.bookingCtx = null; render(); }
 });
 
