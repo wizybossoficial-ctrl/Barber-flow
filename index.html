@@ -76,6 +76,7 @@ const DICT = {
     noAppointments: "Você ainda não tem agendamentos.",
     bookNow: "Agendar",
     ratingLabel: "avaliação",
+    barberCount: "barbeiros",
     addressLabel: "Endereço",
     cancel: "Cancelar",
     confirm: "Confirmar",
@@ -172,6 +173,7 @@ const DICT = {
     noAppointments: "You don't have any appointments yet.",
     bookNow: "Book Now",
     ratingLabel: "rating",
+    barberCount: "barbers",
     addressLabel: "Address",
     cancel: "Cancel",
     confirm: "Confirm",
@@ -268,6 +270,7 @@ const DICT = {
     noAppointments: "Vous n'avez pas encore de rendez-vous.",
     bookNow: "Réserver",
     ratingLabel: "note",
+    barberCount: "barbiers",
     addressLabel: "Adresse",
     cancel: "Annuler",
     confirm: "Confirmer",
@@ -434,8 +437,17 @@ async function refreshTimeOptionsAsync(barberId, date) {
    DATA LOADING
 ========================================================= */
 async function loadShops() {
-  const { data, error } = await sb.from('shops').select('*').order('created_at');
-  if (!error) state.shops = data || [];
+  const [{ data: shops, error }, { data: barbers }] = await Promise.all([
+    sb.from('shops').select('*').order('created_at'),
+    sb.from('barbers').select('shop_id')
+  ]);
+  if (!error) {
+    const barberCounts = (barbers || []).reduce((counts, barber) => {
+      counts[barber.shop_id] = (counts[barber.shop_id] || 0) + 1;
+      return counts;
+    }, {});
+    state.shops = (shops || []).map(shop => ({ ...shop, barber_count: barberCounts[shop.id] || 0 }));
+  }
   render();
 }
 
@@ -689,6 +701,7 @@ function renderClientView() {
                   <i class="fa-solid fa-star"></i> ${shop.rating}
                 </div>
               </div>
+              <p class="text-xs text-slate-400 mb-1"><i class="fa-solid fa-user-tie mr-1 text-gold"></i>${shop.barber_count || 0} ${t('barberCount')}</p>
               <p class="text-xs text-slate-400 mb-4"><i class="fa-solid fa-location-dot mr-1 text-gold"></i>${shop.address}</p>
               <button data-action="open-booking" data-shop-id="${shop.id}"
                 class="w-full gold-gradient text-slate-950 font-semibold text-sm py-2.5 rounded-xl hover:brightness-110 transition shadow-lg shadow-gold/10">
