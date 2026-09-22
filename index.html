@@ -1,0 +1,1269 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GoldCut | Barber Shop Booking</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          gold: {
+            DEFAULT: '#D4AF37',
+            light: '#E8C766',
+            dark: '#9C7C1C'
+          },
+          slate: {
+            950: '#0b0d10',
+            900: '#111417',
+            850: '#161a1f',
+            800: '#1c2127',
+            750: '#20262d',
+            700: '#2a323b'
+          }
+        },
+        fontFamily: {
+          heading: ['Poppins', 'sans-serif'],
+          body: ['Inter', 'sans-serif']
+        }
+      }
+    }
+  }
+</script>
+
+<style>
+  body { font-family: 'Inter', sans-serif; }
+  h1, h2, h3, h4, .font-heading { font-family: 'Poppins', sans-serif; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: #111417; }
+  ::-webkit-scrollbar-thumb { background: #2a323b; border-radius: 8px; }
+  ::-webkit-scrollbar-thumb:hover { background: #D4AF37; }
+
+  .gold-gradient { background: linear-gradient(135deg, #E8C766 0%, #D4AF37 50%, #9C7C1C 100%); }
+  .card-hover { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+  .card-hover:hover { transform: translateY(-4px); box-shadow: 0 10px 30px -10px rgba(212,175,55,0.25); border-color: rgba(212,175,55,0.4); }
+  .fade-in { animation: fadeIn .25s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: translateY(0);} }
+  .modal-backdrop { background: rgba(5,6,8,0.75); backdrop-filter: blur(4px); }
+  input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.8) sepia(1) saturate(3) hue-rotate(5deg); cursor: pointer; }
+</style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-body min-h-screen">
+
+<div id="app" class="min-h-screen flex flex-col"></div>
+
+<script>
+/* =========================================================
+   I18N DICTIONARY
+========================================================= */
+const DICT = {
+  pt: {
+    appName: "GoldCut",
+    tagline: "Reserve seu corte com estilo",
+    navClient: "Cliente",
+    navDashboard: "Painel da Barbearia",
+    heroTitle: "Encontre a barbearia perfeita",
+    heroSubtitle: "Explore parceiros, escolha o barbeiro e agende em segundos.",
+    myAppointments: "Meus Agendamentos",
+    noAppointments: "Você ainda não tem agendamentos.",
+    bookNow: "Agendar",
+    ratingLabel: "avaliação",
+    addressLabel: "Endereço",
+    cancel: "Cancelar",
+    confirm: "Confirmar",
+    close: "Fechar",
+    save: "Salvar",
+    add: "Adicionar",
+    remove: "Remover",
+    complete: "Concluir",
+    bookingTitle: "Novo Agendamento",
+    serviceLabel: "Serviço",
+    barberLabel: "Barbeiro",
+    dateLabel: "Data",
+    timeLabel: "Horário",
+    nameLabel: "Seu nome",
+    phoneLabel: "Telefone",
+    selectOption: "Selecione",
+    statusScheduled: "Agendado",
+    statusCompleted: "Concluído",
+    statusCancelled: "Cancelado",
+    metricToday: "Agendamentos Hoje",
+    metricRevenue: "Receita Estimada",
+    metricClients: "Clientes Cadastrados",
+    scheduleTitle: "Agenda ao Vivo",
+    colClient: "Cliente",
+    colService: "Serviço",
+    colBarber: "Barbeiro",
+    colTime: "Horário",
+    colStatus: "Status",
+    colActions: "Ações",
+    noBookings: "Nenhum agendamento na agenda.",
+    servicesTitle: "Serviços e Preços",
+    newServiceName: "Nome do serviço",
+    newServicePrice: "Preço (R$)",
+    newServiceDuration: "Duração (min)",
+    crmTitle: "CRM de Clientes",
+    crmSubtitle: "Preferências de corte e alergias",
+    crmPreferences: "Preferências",
+    crmAllergies: "Alergias",
+    crmEdit: "Editar",
+    crmNoClients: "Nenhum cliente cadastrado ainda.",
+    minPrice: "min",
+    toastBooked: "Agendamento confirmado!",
+    toastCancelled: "Agendamento cancelado.",
+    toastCompleted: "Agendamento concluído.",
+    toastServiceAdded: "Serviço adicionado.",
+    toastServiceRemoved: "Serviço removido.",
+    toastCrmSaved: "Notas do cliente salvas.",
+    fillFields: "Preencha todos os campos obrigatórios.",
+    yourShop: "Sua Barbearia",
+    exploreShops: "Barbearias Parceiras",
+    searchPlaceholder: "Buscar barbearia por nome ou endereço...",
+    noResults: "Nenhuma barbearia encontrada.",
+    slotTaken: "Esse horário já está reservado para este barbeiro. Escolha outro.",
+    confirmCancelTitle: "Cancelar agendamento?",
+    confirmCancelMsg: "Essa ação não pode ser desfeita.",
+    confirmRemoveServiceTitle: "Remover serviço?",
+    confirmRemoveServiceMsg: "Esse serviço será removido da lista permanentemente.",
+    yes: "Sim",
+    no: "Não",
+    totalVisits: "Visitas",
+    totalSpent: "Total Gasto",
+    authEmail: "E-mail",
+    authPassword: "Senha",
+    authLogin: "Entrar",
+    authSignup: "Criar Conta",
+    authSwitchToSignup: "Não tem conta? Criar conta",
+    authSwitchToLogin: "Já tem conta? Entrar",
+    authLogout: "Sair",
+    authOwnerTitle: "Acesso da Barbearia",
+    authOwnerSubtitle: "Entre ou crie uma conta para gerenciar sua barbearia.",
+    createShopTitle: "Cadastre sua Barbearia",
+    shopNameLabel: "Nome da barbearia",
+    shopAddressLabel: "Endereço",
+    createShopBtn: "Criar Barbearia",
+    barbersTitle: "Barbeiros",
+    newBarberName: "Nome do barbeiro",
+    noBarbersYet: "Nenhum barbeiro cadastrado ainda.",
+    loadingText: "Carregando...",
+    genericError: "Algo deu errado. Tente novamente.",
+    noShopsYet: "Nenhuma barbearia disponível no momento."
+  },
+  en: {
+    appName: "GoldCut",
+    tagline: "Book your cut in style",
+    navClient: "Client",
+    navDashboard: "Barbershop Dashboard",
+    heroTitle: "Find the perfect barbershop",
+    heroSubtitle: "Explore partners, pick a barber, and book in seconds.",
+    myAppointments: "My Appointments",
+    noAppointments: "You don't have any appointments yet.",
+    bookNow: "Book Now",
+    ratingLabel: "rating",
+    addressLabel: "Address",
+    cancel: "Cancel",
+    confirm: "Confirm",
+    close: "Close",
+    save: "Save",
+    add: "Add",
+    remove: "Remove",
+    complete: "Complete",
+    bookingTitle: "New Appointment",
+    serviceLabel: "Service",
+    barberLabel: "Barber",
+    dateLabel: "Date",
+    timeLabel: "Time",
+    nameLabel: "Your name",
+    phoneLabel: "Phone",
+    selectOption: "Select",
+    statusScheduled: "Scheduled",
+    statusCompleted: "Completed",
+    statusCancelled: "Cancelled",
+    metricToday: "Today's Bookings",
+    metricRevenue: "Estimated Revenue",
+    metricClients: "Registered Clients",
+    scheduleTitle: "Live Schedule",
+    colClient: "Client",
+    colService: "Service",
+    colBarber: "Barber",
+    colTime: "Time",
+    colStatus: "Status",
+    colActions: "Actions",
+    noBookings: "No appointments on the schedule.",
+    servicesTitle: "Services & Prices",
+    newServiceName: "Service name",
+    newServicePrice: "Price ($)",
+    newServiceDuration: "Duration (min)",
+    crmTitle: "Client CRM",
+    crmSubtitle: "Haircut preferences and allergies",
+    crmPreferences: "Preferences",
+    crmAllergies: "Allergies",
+    crmEdit: "Edit",
+    crmNoClients: "No clients registered yet.",
+    minPrice: "min",
+    toastBooked: "Appointment confirmed!",
+    toastCancelled: "Appointment cancelled.",
+    toastCompleted: "Appointment completed.",
+    toastServiceAdded: "Service added.",
+    toastServiceRemoved: "Service removed.",
+    toastCrmSaved: "Client notes saved.",
+    fillFields: "Please fill in all required fields.",
+    yourShop: "Your Shop",
+    exploreShops: "Partner Barbershops",
+    searchPlaceholder: "Search barbershop by name or address...",
+    noResults: "No barbershops found.",
+    slotTaken: "This time slot is already booked for this barber. Please choose another.",
+    confirmCancelTitle: "Cancel appointment?",
+    confirmCancelMsg: "This action cannot be undone.",
+    confirmRemoveServiceTitle: "Remove service?",
+    confirmRemoveServiceMsg: "This service will be permanently removed from the list.",
+    yes: "Yes",
+    no: "No",
+    totalVisits: "Visits",
+    totalSpent: "Total Spent",
+    authEmail: "Email",
+    authPassword: "Password",
+    authLogin: "Log In",
+    authSignup: "Sign Up",
+    authSwitchToSignup: "No account? Sign up",
+    authSwitchToLogin: "Already have an account? Log in",
+    authLogout: "Log Out",
+    authOwnerTitle: "Barbershop Access",
+    authOwnerSubtitle: "Log in or create an account to manage your barbershop.",
+    createShopTitle: "Register Your Barbershop",
+    shopNameLabel: "Barbershop name",
+    shopAddressLabel: "Address",
+    createShopBtn: "Create Barbershop",
+    barbersTitle: "Barbers",
+    newBarberName: "Barber name",
+    noBarbersYet: "No barbers registered yet.",
+    loadingText: "Loading...",
+    genericError: "Something went wrong. Please try again.",
+    noShopsYet: "No barbershops available right now."
+  },
+  fr: {
+    appName: "GoldCut",
+    tagline: "Réservez votre coupe avec style",
+    navClient: "Client",
+    navDashboard: "Tableau de Bord",
+    heroTitle: "Trouvez le salon idéal",
+    heroSubtitle: "Explorez les partenaires, choisissez un barbier et réservez en quelques secondes.",
+    myAppointments: "Mes Rendez-vous",
+    noAppointments: "Vous n'avez pas encore de rendez-vous.",
+    bookNow: "Réserver",
+    ratingLabel: "note",
+    addressLabel: "Adresse",
+    cancel: "Annuler",
+    confirm: "Confirmer",
+    close: "Fermer",
+    save: "Enregistrer",
+    add: "Ajouter",
+    remove: "Supprimer",
+    complete: "Terminer",
+    bookingTitle: "Nouveau Rendez-vous",
+    serviceLabel: "Service",
+    barberLabel: "Barbier",
+    dateLabel: "Date",
+    timeLabel: "Heure",
+    nameLabel: "Votre nom",
+    phoneLabel: "Téléphone",
+    selectOption: "Sélectionner",
+    statusScheduled: "Planifié",
+    statusCompleted: "Terminé",
+    statusCancelled: "Annulé",
+    metricToday: "Rendez-vous du Jour",
+    metricRevenue: "Revenu Estimé",
+    metricClients: "Clients Enregistrés",
+    scheduleTitle: "Agenda en Direct",
+    colClient: "Client",
+    colService: "Service",
+    colBarber: "Barbier",
+    colTime: "Heure",
+    colStatus: "Statut",
+    colActions: "Actions",
+    noBookings: "Aucun rendez-vous à l'agenda.",
+    servicesTitle: "Services et Prix",
+    newServiceName: "Nom du service",
+    newServicePrice: "Prix (R$)",
+    newServiceDuration: "Durée (min)",
+    crmTitle: "CRM Clients",
+    crmSubtitle: "Préférences de coupe et allergies",
+    crmPreferences: "Préférences",
+    crmAllergies: "Allergies",
+    crmEdit: "Modifier",
+    crmNoClients: "Aucun client enregistré pour le moment.",
+    minPrice: "min",
+    toastBooked: "Rendez-vous confirmé !",
+    toastCancelled: "Rendez-vous annulé.",
+    toastCompleted: "Rendez-vous terminé.",
+    toastServiceAdded: "Service ajouté.",
+    toastServiceRemoved: "Service supprimé.",
+    toastCrmSaved: "Notes du client enregistrées.",
+    fillFields: "Veuillez remplir tous les champs obligatoires.",
+    yourShop: "Votre Salon",
+    exploreShops: "Salons Partenaires",
+    searchPlaceholder: "Rechercher un salon par nom ou adresse...",
+    noResults: "Aucun salon trouvé.",
+    slotTaken: "Ce créneau est déjà réservé pour ce barbier. Veuillez en choisir un autre.",
+    confirmCancelTitle: "Annuler le rendez-vous ?",
+    confirmCancelMsg: "Cette action est irréversible.",
+    confirmRemoveServiceTitle: "Supprimer le service ?",
+    confirmRemoveServiceMsg: "Ce service sera définitivement supprimé de la liste.",
+    yes: "Oui",
+    no: "Non",
+    totalVisits: "Visites",
+    totalSpent: "Total Dépensé",
+    authEmail: "E-mail",
+    authPassword: "Mot de passe",
+    authLogin: "Se connecter",
+    authSignup: "Créer un compte",
+    authSwitchToSignup: "Pas de compte ? Créer un compte",
+    authSwitchToLogin: "Déjà un compte ? Se connecter",
+    authLogout: "Déconnexion",
+    authOwnerTitle: "Accès Salon",
+    authOwnerSubtitle: "Connectez-vous ou créez un compte pour gérer votre salon.",
+    createShopTitle: "Enregistrez votre Salon",
+    shopNameLabel: "Nom du salon",
+    shopAddressLabel: "Adresse",
+    createShopBtn: "Créer le Salon",
+    barbersTitle: "Barbiers",
+    newBarberName: "Nom du barbier",
+    noBarbersYet: "Aucun barbier enregistré pour le moment.",
+    loadingText: "Chargement...",
+    genericError: "Une erreur est survenue. Veuillez réessayer.",
+    noShopsYet: "Aucun salon disponible pour le moment."
+  }
+};
+
+function t(key) { return (DICT[state.lang] && DICT[state.lang][key]) || DICT.pt[key] || key; }
+
+/* =========================================================
+   SUPABASE CLIENT
+========================================================= */
+const SUPABASE_URL = 'https://hanwfpiqmvyqifwfxwfr.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_fSE-7Cgo6DhU1IFD-1Q3fw_klMcfxDp';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const MY_APPTS_KEY = 'goldcut_my_appts_v1';
+function getMyApptRefs() { try { return JSON.parse(localStorage.getItem(MY_APPTS_KEY)) || []; } catch (e) { return []; } }
+function saveMyApptRefs(list) { try { localStorage.setItem(MY_APPTS_KEY, JSON.stringify(list)); } catch (e) {} }
+
+/* =========================================================
+   STATE
+========================================================= */
+const todayStr = new Date().toISOString().split('T')[0];
+
+const state = {
+  lang: localStorage.getItem('goldcut_lang') || 'pt',
+  view: 'client', // 'client' | 'dashboard'
+  bookingCtx: null, // { shopId, services, barbers }
+  crmEditingId: null,
+  confirmDialog: null, // { title, message, onConfirm, id, token }
+  shopSearch: '',
+  toast: null,
+
+  shops: [],
+  myAppointments: [],
+
+  session: null,
+  authView: 'login', // 'login' | 'signup'
+  authError: '',
+  authInfo: '',
+  authLoading: false,
+
+  myShop: null,
+  dashboard: { loading: false, services: [], barbers: [], appointments: [], clients: [] }
+};
+
+const TIME_SLOTS = ['09:00','09:30','10:00','10:30','11:00','11:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30'];
+
+/* =========================================================
+   HELPERS
+========================================================= */
+function showToast(msg) {
+  state.toast = msg;
+  render();
+  setTimeout(() => { state.toast = null; renderToastOnly(); }, 2600);
+}
+function money(n) { return 'R$ ' + Number(n || 0).toFixed(2).replace('.', ','); }
+function statusBadge(status) {
+  const map = {
+    scheduled: { text: t('statusScheduled'), cls: 'bg-blue-500/15 text-blue-400 border-blue-500/30' },
+    completed: { text: t('statusCompleted'), cls: 'bg-green-500/15 text-green-400 border-green-500/30' },
+    cancelled: { text: t('statusCancelled'), cls: 'bg-red-500/15 text-red-400 border-red-500/30' }
+  };
+  const m = map[status];
+  return `<span class="text-xs font-medium px-2.5 py-1 rounded-full border ${m.cls}">${m.text}</span>`;
+}
+function renderTimeOptionsBase(taken) {
+  return `<option value="">${t('selectOption')}</option>` +
+    TIME_SLOTS.map(tm => `<option value="${tm}" ${taken.includes(tm) ? 'disabled' : ''}>${tm}${taken.includes(tm) ? ' \u2715' : ''}</option>`).join('');
+}
+async function refreshTimeOptionsAsync(barberId, date) {
+  const bkTimeEl = document.getElementById('bkTime');
+  if (!bkTimeEl) return;
+  if (!barberId || !date) { bkTimeEl.innerHTML = renderTimeOptionsBase([]); return; }
+  const { data, error } = await sb.rpc('get_taken_slots', { p_barber_id: barberId, p_date: date });
+  if (document.getElementById('bkTime')) bkTimeEl.innerHTML = renderTimeOptionsBase(error ? [] : (data || []));
+}
+
+/* =========================================================
+   DATA LOADING
+========================================================= */
+async function loadShops() {
+  const { data, error } = await sb.from('shops').select('*').order('created_at');
+  if (!error) state.shops = data || [];
+  render();
+}
+
+async function loadMyAppointments() {
+  const refs = getMyApptRefs();
+  if (refs.length === 0) { state.myAppointments = []; return; }
+  const { data, error } = await sb.rpc('get_my_appointments', { p_tokens: refs.map(r => r.token) });
+  if (!error) state.myAppointments = data || [];
+  render();
+}
+
+async function openBooking(shopId) {
+  state.bookingCtx = { shopId, services: [], barbers: [] };
+  render();
+  const [{ data: services }, { data: barbers }] = await Promise.all([
+    sb.from('services').select('*').eq('shop_id', shopId).order('name'),
+    sb.from('barbers').select('*').eq('shop_id', shopId).order('name')
+  ]);
+  if (state.bookingCtx && state.bookingCtx.shopId === shopId) {
+    state.bookingCtx.services = services || [];
+    state.bookingCtx.barbers = barbers || [];
+    render();
+  }
+}
+
+async function ensureDashboardData() {
+  if (!state.session) return;
+  if (!state.myShop) {
+    const { data } = await sb.from('shops').select('*').eq('owner_id', state.session.user.id).maybeSingle();
+    state.myShop = data || null;
+    render();
+    if (!state.myShop) return;
+  }
+  await loadDashboardData();
+}
+
+async function loadDashboardData() {
+  if (!state.myShop) return;
+  state.dashboard.loading = true;
+  render();
+  const shopId = state.myShop.id;
+  const [{ data: services }, { data: barbers }, { data: appointments }, { data: clients }] = await Promise.all([
+    sb.from('services').select('*').eq('shop_id', shopId).order('name'),
+    sb.from('barbers').select('*').eq('shop_id', shopId).order('name'),
+    sb.from('appointments').select('*').eq('shop_id', shopId).order('appt_date').order('appt_time'),
+    sb.from('clients').select('*').eq('shop_id', shopId).order('name')
+  ]);
+  state.dashboard = { loading: false, services: services || [], barbers: barbers || [], appointments: appointments || [], clients: clients || [] };
+  render();
+}
+
+/* =========================================================
+   RENDER: ROOT
+========================================================= */
+function render() {
+  const activeEl = document.activeElement;
+  const activeId = activeEl && activeEl.id ? activeEl.id : null;
+  const selStart = activeEl && 'selectionStart' in activeEl ? activeEl.selectionStart : null;
+  const selEnd = activeEl && 'selectionEnd' in activeEl ? activeEl.selectionEnd : null;
+
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    ${renderHeader()}
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      ${state.view === 'client' ? renderClientView() : renderDashboardView()}
+    </main>
+    ${renderFooter()}
+    ${state.bookingCtx ? renderBookingModal() : ''}
+    ${state.crmEditingId !== null ? renderCrmModal() : ''}
+    ${state.confirmDialog ? renderConfirmDialog() : ''}
+    ${renderToast()}
+  `;
+  attachHandlers();
+  restoreFocus(activeId, selStart, selEnd);
+  localStorage.setItem('goldcut_lang', state.lang);
+}
+
+function restoreFocus(activeId, selStart, selEnd) {
+  if (activeId) {
+    const el = document.getElementById(activeId);
+    if (el) {
+      el.focus();
+      if (selStart !== null && el.setSelectionRange) { try { el.setSelectionRange(selStart, selEnd); } catch (e) {} }
+      return;
+    }
+  }
+  if (state.confirmDialog) {
+    document.querySelector('[data-action="confirm-no"]')?.focus();
+  } else if (state.bookingCtx) {
+    document.getElementById('bkName')?.focus();
+  } else if (state.crmEditingId !== null) {
+    document.getElementById('crmPrefs')?.focus();
+  }
+}
+
+function renderToastOnly() {
+  const el = document.getElementById('toastHolder');
+  if (el) el.outerHTML = renderToast();
+}
+
+function renderToast() {
+  return `<div id="toastHolder">${state.toast ? `
+    <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] fade-in">
+      <div class="bg-slate-800 border border-gold/40 text-slate-50 px-5 py-3 rounded-xl shadow-2xl shadow-black/50 flex items-center gap-2">
+        <i class="fa-solid fa-circle-check text-gold"></i>
+        <span class="text-sm font-medium">${state.toast}</span>
+      </div>
+    </div>` : ''}</div>`;
+}
+
+function renderConfirmDialog() {
+  const cd = state.confirmDialog;
+  if (!cd) return '';
+  return `
+  <div class="fixed inset-0 modal-backdrop z-[60] flex items-center justify-center p-4" data-action="close-confirm-backdrop">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm p-6 fade-in" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" onclick="event.stopPropagation()">
+      <h3 id="confirmTitle" class="font-heading text-lg font-bold mb-2">${cd.title}</h3>
+      <p class="text-sm text-slate-400 mb-5">${cd.message}</p>
+      <div class="flex gap-3">
+        <button data-action="confirm-no" class="flex-1 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 transition text-sm font-medium">${t('no')}</button>
+        <button data-action="confirm-yes" class="flex-1 bg-red-500/90 hover:bg-red-500 text-white font-semibold py-2.5 rounded-xl transition text-sm">${t('yes')}</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* =========================================================
+   RENDER: HEADER
+========================================================= */
+function renderHeader() {
+  const langs = [['pt','PT'],['en','EN'],['fr','FR']];
+  return `
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-4 flex-wrap">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl gold-gradient flex items-center justify-center shadow-lg shadow-gold/20">
+          <i class="fa-solid fa-scissors text-slate-950"></i>
+        </div>
+        <div>
+          <h1 class="font-heading font-bold text-lg leading-none">${t('appName')}</h1>
+          <p class="text-xs text-slate-400">${t('tagline')}</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 flex-wrap">
+        <div class="flex bg-slate-800 rounded-xl p-1 border border-slate-700">
+          <button data-action="switch-view" data-view="client"
+            class="px-4 py-2 rounded-lg text-sm font-medium transition ${state.view==='client' ? 'bg-gold text-slate-950 shadow' : 'text-slate-300 hover:text-white'}">
+            <i class="fa-solid fa-user mr-1.5"></i>${t('navClient')}
+          </button>
+          <button data-action="switch-view" data-view="dashboard"
+            class="px-4 py-2 rounded-lg text-sm font-medium transition ${state.view==='dashboard' ? 'bg-gold text-slate-950 shadow' : 'text-slate-300 hover:text-white'}">
+            <i class="fa-solid fa-store mr-1.5"></i>${t('navDashboard')}
+          </button>
+        </div>
+
+        <div class="flex bg-slate-800 rounded-xl p-1 border border-slate-700">
+          ${langs.map(([code,label]) => `
+            <button data-action="switch-lang" data-lang="${code}"
+              class="px-3 py-2 rounded-lg text-xs font-semibold transition ${state.lang===code ? 'bg-gold text-slate-950' : 'text-slate-300 hover:text-white'}">
+              ${label}
+            </button>`).join('')}
+        </div>
+
+        ${state.session ? `
+        <button data-action="logout" aria-label="${t('authLogout')}" title="${t('authLogout')}"
+          class="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:text-red-400 hover:border-red-500/40 transition">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </button>` : ''}
+      </div>
+    </div>
+  </header>`;
+}
+
+function renderFooter() {
+  return `
+  <footer class="border-t border-slate-800 py-6 text-center text-xs text-slate-500">
+    <i class="fa-solid fa-scissors text-gold mr-1"></i> ${t('appName')} · &copy; ${new Date().getFullYear()}
+  </footer>`;
+}
+
+/* =========================================================
+   RENDER: CLIENT VIEW
+========================================================= */
+function renderClientView() {
+  const myAppointments = state.myAppointments.filter(a => a.status === 'scheduled');
+  const query = (state.shopSearch || '').trim().toLowerCase();
+  const filteredShops = state.shops.filter(s => !query || (s.name + ' ' + s.address).toLowerCase().includes(query));
+
+  return `
+  <section class="fade-in">
+    <div class="mb-10 text-center">
+      <h2 class="font-heading text-3xl sm:text-4xl font-extrabold mb-2">
+        ${t('heroTitle')} <i class="fa-solid fa-star text-gold"></i>
+      </h2>
+      <p class="text-slate-400">${t('heroSubtitle')}</p>
+    </div>
+
+    <div class="mb-10">
+      <h3 class="font-heading text-xl font-bold mb-4 flex items-center gap-2">
+        <i class="fa-solid fa-calendar-check text-gold"></i> ${t('myAppointments')}
+      </h3>
+      ${myAppointments.length === 0 ? `
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-slate-400 text-sm">${t('noAppointments')}</div>
+      ` : `
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          ${myAppointments.map(a => `
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+              <div class="flex items-start justify-between mb-2">
+                <div>
+                  <p class="font-semibold text-sm">${a.shop_name}</p>
+                  <p class="text-xs text-slate-400">${a.service_name || ''} · ${a.barber_name || ''}</p>
+                </div>
+                ${statusBadge(a.status)}
+              </div>
+              <p class="text-sm text-gold font-heading font-bold"><i class="fa-regular fa-clock mr-1"></i>${a.appt_date} · ${a.appt_time}</p>
+              <button data-action="request-client-cancel" data-id="${a.id}" data-token="${a.client_token}" aria-label="${t('cancel')}"
+                class="mt-3 w-full text-xs font-semibold py-2 rounded-lg bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20 transition">
+                <i class="fa-solid fa-xmark mr-1"></i>${t('cancel')}
+              </button>
+            </div>`).join('')}
+        </div>
+      `}
+    </div>
+
+    <div>
+      <h3 class="font-heading text-xl font-bold mb-4 flex items-center gap-2">
+        <i class="fa-solid fa-shop text-gold"></i> ${t('exploreShops')}
+      </h3>
+      <div class="relative mb-5">
+        <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
+        <input id="shopSearchInput" type="text" value="${state.shopSearch || ''}" placeholder="${t('searchPlaceholder')}" aria-label="${t('searchPlaceholder')}"
+          class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-11 pr-4 py-3 text-sm focus:outline-none focus:border-gold" />
+      </div>
+      ${state.shops.length === 0 ? `
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-slate-400 text-sm text-center">${t('noShopsYet')}</div>
+      ` : filteredShops.length === 0 ? `
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-slate-400 text-sm text-center">${t('noResults')}</div>
+      ` : `
+      <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        ${filteredShops.map(shop => `
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden card-hover">
+            <div class="h-40 w-full bg-slate-800 overflow-hidden">
+              <img src="${shop.image || 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800&q=80'}" alt="${shop.name}" class="w-full h-full object-cover" loading="lazy" />
+            </div>
+            <div class="p-5">
+              <div class="flex items-center justify-between mb-1">
+                <h4 class="font-heading font-bold text-lg">${shop.name}</h4>
+                <div class="flex items-center gap-1 text-gold text-sm font-semibold">
+                  <i class="fa-solid fa-star"></i> ${shop.rating}
+                </div>
+              </div>
+              <p class="text-xs text-slate-400 mb-4"><i class="fa-solid fa-location-dot mr-1 text-gold"></i>${shop.address}</p>
+              <button data-action="open-booking" data-shop-id="${shop.id}"
+                class="w-full gold-gradient text-slate-950 font-semibold text-sm py-2.5 rounded-xl hover:brightness-110 transition shadow-lg shadow-gold/10">
+                <i class="fa-solid fa-calendar-plus mr-1.5"></i>${t('bookNow')}
+              </button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      `}
+    </div>
+  </section>`;
+}
+
+/* =========================================================
+   RENDER: BOOKING MODAL
+========================================================= */
+function renderBookingModal() {
+  const shop = state.shops.find(s => s.id === state.bookingCtx.shopId);
+  const services = state.bookingCtx.services;
+  const barbers = state.bookingCtx.barbers;
+  if (!shop) return '';
+
+  return `
+  <div class="fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4" data-action="close-modal-backdrop">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg p-6 fade-in max-h-[90vh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="bookingModalTitle" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between mb-5">
+        <h3 id="bookingModalTitle" class="font-heading text-xl font-bold">${t('bookingTitle')}</h3>
+        <button data-action="close-modal" aria-label="${t('close')}" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+      </div>
+      <p class="text-sm text-gold font-semibold mb-4">${shop.name}</p>
+
+      <form id="bookingForm" class="space-y-4">
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">${t('nameLabel')} *</label>
+          <input id="bkName" type="text" required class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" placeholder="${t('nameLabel')}" />
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">${t('phoneLabel')}</label>
+          <input id="bkPhone" type="text" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" placeholder="${t('phoneLabel')}" />
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">${t('serviceLabel')} *</label>
+          <select id="bkService" required class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold">
+            <option value="">${t('selectOption')}</option>
+            ${services.map(s => `<option value="${s.id}">${s.name} · ${money(s.price)} (${s.duration_min} ${t('minPrice')})</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">${t('barberLabel')} *</label>
+          <select id="bkBarber" required class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold">
+            <option value="">${t('selectOption')}</option>
+            ${barbers.map(b => `<option value="${b.id}">${b.name}</option>`).join('')}
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs text-slate-400 block mb-1">${t('dateLabel')} *</label>
+            <input id="bkDate" type="date" required min="${todayStr}" value="${todayStr}" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+          </div>
+          <div>
+            <label class="text-xs text-slate-400 block mb-1">${t('timeLabel')} *</label>
+            <select id="bkTime" required class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold">
+              ${renderTimeOptionsBase([])}
+            </select>
+          </div>
+        </div>
+
+        <div class="flex gap-3 pt-2">
+          <button type="button" data-action="close-modal" class="flex-1 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 transition text-sm font-medium">
+            ${t('close')}
+          </button>
+          <button type="submit" data-action="confirm-booking" data-shop-id="${shop.id}"
+            class="flex-1 gold-gradient text-slate-950 font-semibold py-2.5 rounded-xl hover:brightness-110 transition text-sm">
+            ${t('confirm')}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>`;
+}
+
+/* =========================================================
+   RENDER: DASHBOARD VIEW
+========================================================= */
+function renderAuthGate() {
+  return `
+  <div class="max-w-md mx-auto bg-slate-900 border border-slate-800 rounded-2xl p-8 fade-in">
+    <div class="text-center mb-6">
+      <div class="w-14 h-14 rounded-2xl gold-gradient flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-store text-slate-950 text-xl"></i></div>
+      <h2 class="font-heading text-xl font-bold">${t('authOwnerTitle')}</h2>
+      <p class="text-sm text-slate-400 mt-1">${t('authOwnerSubtitle')}</p>
+    </div>
+    ${state.authError ? `<div class="mb-4 text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">${state.authError}</div>` : ''}
+    ${state.authInfo ? `<div class="mb-4 text-sm text-gold bg-gold/10 border border-gold/30 rounded-lg px-3 py-2">${state.authInfo}</div>` : ''}
+    <form id="authForm" class="space-y-4">
+      <div>
+        <label class="text-xs text-slate-400 block mb-1">${t('authEmail')}</label>
+        <input id="authEmail" type="email" required class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+      </div>
+      <div>
+        <label class="text-xs text-slate-400 block mb-1">${t('authPassword')}</label>
+        <input id="authPassword" type="password" required minlength="6" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+      </div>
+      <button type="submit" ${state.authLoading ? 'disabled' : ''} class="w-full gold-gradient text-slate-950 font-semibold py-2.5 rounded-xl hover:brightness-110 transition text-sm disabled:opacity-60">
+        ${state.authLoading ? t('loadingText') : (state.authView === 'login' ? t('authLogin') : t('authSignup'))}
+      </button>
+    </form>
+    <button data-action="toggle-auth-mode" class="mt-4 text-xs text-gold hover:underline w-full text-center">
+      ${state.authView === 'login' ? t('authSwitchToSignup') : t('authSwitchToLogin')}
+    </button>
+  </div>`;
+}
+
+function renderCreateShopForm() {
+  return `
+  <div class="max-w-md mx-auto bg-slate-900 border border-slate-800 rounded-2xl p-8 fade-in">
+    <div class="text-center mb-6">
+      <div class="w-14 h-14 rounded-2xl gold-gradient flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-plus text-slate-950 text-xl"></i></div>
+      <h2 class="font-heading text-xl font-bold">${t('createShopTitle')}</h2>
+    </div>
+    ${state.authError ? `<div class="mb-4 text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">${state.authError}</div>` : ''}
+    <form id="createShopForm" class="space-y-4">
+      <div>
+        <label class="text-xs text-slate-400 block mb-1">${t('shopNameLabel')}</label>
+        <input id="newShopName" type="text" required class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+      </div>
+      <div>
+        <label class="text-xs text-slate-400 block mb-1">${t('shopAddressLabel')}</label>
+        <input id="newShopAddress" type="text" required class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+      </div>
+      <button type="submit" ${state.authLoading ? 'disabled' : ''} class="w-full gold-gradient text-slate-950 font-semibold py-2.5 rounded-xl hover:brightness-110 transition text-sm disabled:opacity-60">
+        ${state.authLoading ? t('loadingText') : t('createShopBtn')}
+      </button>
+    </form>
+  </div>`;
+}
+
+function renderDashboardView() {
+  if (!state.session) return renderAuthGate();
+  if (!state.myShop) return renderCreateShopForm();
+  if (state.dashboard.loading) return `<div class="text-center text-slate-500 py-24"><i class="fa-solid fa-circle-notch fa-spin text-3xl text-gold"></i></div>`;
+
+  const shop = state.myShop;
+  const { services, barbers, appointments, clients } = state.dashboard;
+  const todayAppts = appointments.filter(a => a.appt_date === todayStr && a.status !== 'cancelled');
+  const revenue = todayAppts.reduce((sum, a) => {
+    const svc = services.find(s => s.id === a.service_id);
+    return sum + (svc ? Number(svc.price) : 0);
+  }, 0);
+  const clientStats = clients.map(c => {
+    const completed = appointments.filter(a => a.status === 'completed' && a.client_name.toLowerCase() === c.name.toLowerCase());
+    const totalSpent = completed.reduce((sum, a) => { const s = services.find(sv => sv.id === a.service_id); return sum + (s ? Number(s.price) : 0); }, 0);
+    return { ...c, visits: completed.length, totalSpent };
+  });
+
+  return `
+  <section class="fade-in">
+    <div class="mb-8">
+      <h2 class="font-heading text-2xl sm:text-3xl font-extrabold mb-1">${shop.name} <span class="text-gold">· ${t('navDashboard')}</span></h2>
+      <p class="text-slate-400 text-sm">${t('yourShop')}</p>
+    </div>
+
+    <!-- METRICS -->
+    <div class="grid gap-4 sm:grid-cols-3 mb-8">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-gold/15 text-gold flex items-center justify-center text-xl"><i class="fa-solid fa-calendar-day"></i></div>
+        <div><p class="text-2xl font-heading font-bold">${todayAppts.length}</p><p class="text-xs text-slate-400">${t('metricToday')}</p></div>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-gold/15 text-gold flex items-center justify-center text-xl"><i class="fa-solid fa-sack-dollar"></i></div>
+        <div><p class="text-2xl font-heading font-bold">${money(revenue)}</p><p class="text-xs text-slate-400">${t('metricRevenue')}</p></div>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-gold/15 text-gold flex items-center justify-center text-xl"><i class="fa-solid fa-users"></i></div>
+        <div><p class="text-2xl font-heading font-bold">${clients.length}</p><p class="text-xs text-slate-400">${t('metricClients')}</p></div>
+      </div>
+    </div>
+
+    <!-- SCHEDULE -->
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 mb-8">
+      <h3 class="font-heading text-lg font-bold mb-4 flex items-center gap-2"><i class="fa-solid fa-list-check text-gold"></i>${t('scheduleTitle')}</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm min-w-[640px]">
+          <thead>
+            <tr class="text-left text-slate-400 border-b border-slate-800">
+              <th class="py-2 pr-3 font-medium">${t('colClient')}</th>
+              <th class="py-2 pr-3 font-medium">${t('colService')}</th>
+              <th class="py-2 pr-3 font-medium">${t('colBarber')}</th>
+              <th class="py-2 pr-3 font-medium">${t('colTime')}</th>
+              <th class="py-2 pr-3 font-medium">${t('colStatus')}</th>
+              <th class="py-2 pr-3 font-medium text-right">${t('colActions')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${appointments.length === 0 ? `<tr><td colspan="6" class="py-6 text-center text-slate-500">${t('noBookings')}</td></tr>` : appointments.map(a => {
+              const svc = services.find(s => s.id === a.service_id); const brb = barbers.find(b => b.id === a.barber_id);
+              return `
+              <tr class="border-b border-slate-800/60 hover:bg-slate-800/30">
+                <td class="py-3 pr-3 font-medium">${a.client_name}</td>
+                <td class="py-3 pr-3 text-slate-300">${svc ? svc.name : '-'}</td>
+                <td class="py-3 pr-3 text-slate-300">${brb ? brb.name : '-'}</td>
+                <td class="py-3 pr-3 text-gold font-semibold">${a.appt_date} · ${a.appt_time}</td>
+                <td class="py-3 pr-3">${statusBadge(a.status)}</td>
+                <td class="py-3 pr-3">
+                  <div class="flex justify-end gap-2">
+                    ${a.status === 'scheduled' ? `
+                      <button data-action="owner-complete-appointment" data-id="${a.id}" title="${t('complete')}" aria-label="${t('complete')}"
+                        class="w-8 h-8 rounded-lg bg-green-500/10 text-green-400 border border-green-500/30 hover:bg-green-500/20 transition">
+                        <i class="fa-solid fa-check"></i>
+                      </button>
+                      <button data-action="request-owner-cancel" data-id="${a.id}" title="${t('cancel')}" aria-label="${t('cancel')}"
+                        class="w-8 h-8 rounded-lg bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20 transition">
+                        <i class="fa-solid fa-xmark"></i>
+                      </button>` : '<span class="text-slate-600 text-xs">—</span>'}
+                  </div>
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="grid gap-8 lg:grid-cols-3">
+      <!-- SERVICES MANAGER -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+        <h3 class="font-heading text-lg font-bold mb-4 flex items-center gap-2"><i class="fa-solid fa-tags text-gold"></i>${t('servicesTitle')}</h3>
+        <div class="space-y-2 mb-4 max-h-56 overflow-y-auto pr-1">
+          ${services.map(s => `
+            <div class="flex items-center justify-between bg-slate-800/60 rounded-lg px-3 py-2">
+              <div>
+                <p class="text-sm font-medium">${s.name}</p>
+                <p class="text-xs text-slate-400">${money(s.price)} · ${s.duration_min} ${t('minPrice')}</p>
+              </div>
+              <button data-action="request-remove-service" data-id="${s.id}" aria-label="${t('remove')}" class="text-red-400 hover:text-red-300 w-8 h-8 rounded-lg hover:bg-red-500/10 transition">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>`).join('')}
+        </div>
+        <form id="serviceForm" class="grid grid-cols-3 gap-2">
+          <input id="svcName" type="text" placeholder="${t('newServiceName')}" required class="col-span-3 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+          <input id="svcPrice" type="number" min="0" step="0.01" placeholder="${t('newServicePrice')}" required class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+          <input id="svcDuration" type="number" min="5" step="5" placeholder="${t('newServiceDuration')}" required class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+          <button type="submit" data-action="add-service" class="gold-gradient text-slate-950 font-semibold rounded-lg text-sm hover:brightness-110 transition">
+            <i class="fa-solid fa-plus"></i>
+          </button>
+        </form>
+      </div>
+
+      <!-- BARBERS MANAGER -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+        <h3 class="font-heading text-lg font-bold mb-4 flex items-center gap-2"><i class="fa-solid fa-user-tie text-gold"></i>${t('barbersTitle')}</h3>
+        <div class="space-y-2 mb-4 max-h-56 overflow-y-auto pr-1">
+          ${barbers.length === 0 ? `<p class="text-sm text-slate-500">${t('noBarbersYet')}</p>` : barbers.map(b => `
+            <div class="flex items-center justify-between bg-slate-800/60 rounded-lg px-3 py-2">
+              <p class="text-sm font-medium">${b.name}</p>
+              <button data-action="request-remove-barber" data-id="${b.id}" aria-label="${t('remove')}" class="text-red-400 hover:text-red-300 w-8 h-8 rounded-lg hover:bg-red-500/10 transition">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>`).join('')}
+        </div>
+        <form id="barberForm" class="flex gap-2">
+          <input id="barberName" type="text" placeholder="${t('newBarberName')}" required class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+          <button type="submit" class="gold-gradient text-slate-950 font-semibold rounded-lg text-sm px-4 hover:brightness-110 transition"><i class="fa-solid fa-plus"></i></button>
+        </form>
+      </div>
+
+      <!-- CRM -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+        <h3 class="font-heading text-lg font-bold mb-1 flex items-center gap-2"><i class="fa-solid fa-address-card text-gold"></i>${t('crmTitle')}</h3>
+        <p class="text-xs text-slate-400 mb-4">${t('crmSubtitle')}</p>
+        <div class="space-y-3 max-h-80 overflow-y-auto pr-1">
+          ${clients.length === 0 ? `<p class="text-sm text-slate-500">${t('crmNoClients')}</p>` : clientStats.map(c => `
+            <div class="bg-slate-800/60 rounded-lg p-3">
+              <div class="flex items-start justify-between mb-1">
+                <p class="text-sm font-semibold">${c.name}</p>
+                <button data-action="edit-crm" data-id="${c.id}" class="text-xs text-gold hover:underline"><i class="fa-solid fa-pen mr-1"></i>${t('crmEdit')}</button>
+              </div>
+              <p class="text-xs text-slate-400 mb-0.5"><i class="fa-solid fa-scissors text-gold mr-1"></i>${t('crmPreferences')}: ${c.preferences || '-'}</p>
+              <p class="text-xs text-slate-400 mb-0.5"><i class="fa-solid fa-triangle-exclamation text-gold mr-1"></i>${t('crmAllergies')}: ${c.allergies || '-'}</p>
+              <p class="text-xs text-slate-500"><i class="fa-solid fa-calendar-check text-gold mr-1"></i>${t('totalVisits')}: ${c.visits} · ${t('totalSpent')}: ${money(c.totalSpent)}</p>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>
+  </section>`;
+}
+
+/* =========================================================
+   RENDER: CRM MODAL
+========================================================= */
+function renderCrmModal() {
+  const client = state.dashboard.clients.find(c => c.id === state.crmEditingId);
+  if (!client) return '';
+  return `
+  <div class="fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4" data-action="close-crm-backdrop">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6 fade-in" role="dialog" aria-modal="true" aria-labelledby="crmModalTitle" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between mb-5">
+        <h3 id="crmModalTitle" class="font-heading text-xl font-bold">${client.name}</h3>
+        <button data-action="close-crm" aria-label="${t('close')}" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+      </div>
+      <form id="crmForm" class="space-y-4">
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">${t('crmPreferences')}</label>
+          <textarea id="crmPrefs" rows="3" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold">${client.preferences || ''}</textarea>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">${t('crmAllergies')}</label>
+          <textarea id="crmAllergies" rows="2" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold">${client.allergies || ''}</textarea>
+        </div>
+        <div class="flex gap-3 pt-2">
+          <button type="button" data-action="close-crm" class="flex-1 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 transition text-sm font-medium">${t('close')}</button>
+          <button type="submit" data-action="save-crm" data-id="${client.id}" class="flex-1 gold-gradient text-slate-950 font-semibold py-2.5 rounded-xl hover:brightness-110 transition text-sm">${t('save')}</button>
+        </div>
+      </form>
+    </div>
+  </div>`;
+}
+
+/* =========================================================
+   EVENT HANDLERS
+========================================================= */
+function attachHandlers() {
+  const app = document.getElementById('app');
+
+  app.querySelectorAll('[data-action="switch-view"]').forEach(el =>
+    el.addEventListener('click', () => {
+      state.view = el.dataset.view;
+      render();
+      if (state.view === 'dashboard') ensureDashboardData();
+    }));
+
+  app.querySelectorAll('[data-action="switch-lang"]').forEach(el =>
+    el.addEventListener('click', () => { state.lang = el.dataset.lang; render(); }));
+
+  app.querySelectorAll('[data-action="logout"]').forEach(el =>
+    el.addEventListener('click', async () => {
+      await sb.auth.signOut();
+      state.session = null;
+      state.myShop = null;
+      state.dashboard = { loading: false, services: [], barbers: [], appointments: [], clients: [] };
+      state.view = 'client';
+      render();
+    }));
+
+  app.querySelectorAll('[data-action="open-booking"]').forEach(el =>
+    el.addEventListener('click', () => openBooking(el.dataset.shopId)));
+
+  app.querySelectorAll('[data-action="close-modal"], [data-action="close-modal-backdrop"]').forEach(el =>
+    el.addEventListener('click', () => { state.bookingCtx = null; render(); }));
+
+  app.querySelectorAll('[data-action="close-crm"], [data-action="close-crm-backdrop"]').forEach(el =>
+    el.addEventListener('click', () => { state.crmEditingId = null; render(); }));
+
+  app.querySelectorAll('[data-action="edit-crm"]').forEach(el =>
+    el.addEventListener('click', () => { state.crmEditingId = el.dataset.id; render(); }));
+
+  const shopSearchInput = document.getElementById('shopSearchInput');
+  if (shopSearchInput) shopSearchInput.addEventListener('input', () => { state.shopSearch = shopSearchInput.value; render(); });
+
+  app.querySelectorAll('[data-action="toggle-auth-mode"]').forEach(el =>
+    el.addEventListener('click', () => {
+      state.authView = state.authView === 'login' ? 'signup' : 'login';
+      state.authError = ''; state.authInfo = '';
+      render();
+    }));
+
+  const authForm = document.getElementById('authForm');
+  if (authForm) authForm.addEventListener('submit', (e) => { e.preventDefault(); handleAuthSubmit(); });
+
+  const createShopForm = document.getElementById('createShopForm');
+  if (createShopForm) createShopForm.addEventListener('submit', (e) => { e.preventDefault(); handleCreateShop(); });
+
+  app.querySelectorAll('[data-action="request-client-cancel"]').forEach(el =>
+    el.addEventListener('click', () => {
+      state.confirmDialog = { title: t('confirmCancelTitle'), message: t('confirmCancelMsg'), onConfirm: 'client-cancel', id: el.dataset.id, token: el.dataset.token };
+      render();
+    }));
+
+  app.querySelectorAll('[data-action="request-owner-cancel"]').forEach(el =>
+    el.addEventListener('click', () => {
+      state.confirmDialog = { title: t('confirmCancelTitle'), message: t('confirmCancelMsg'), onConfirm: 'owner-cancel', id: el.dataset.id };
+      render();
+    }));
+
+  app.querySelectorAll('[data-action="request-remove-service"]').forEach(el =>
+    el.addEventListener('click', () => {
+      state.confirmDialog = { title: t('confirmRemoveServiceTitle'), message: t('confirmRemoveServiceMsg'), onConfirm: 'remove-service', id: el.dataset.id };
+      render();
+    }));
+
+  app.querySelectorAll('[data-action="request-remove-barber"]').forEach(el =>
+    el.addEventListener('click', () => {
+      state.confirmDialog = { title: t('confirmRemoveServiceTitle'), message: t('confirmRemoveServiceMsg'), onConfirm: 'remove-barber', id: el.dataset.id };
+      render();
+    }));
+
+  app.querySelectorAll('[data-action="confirm-no"], [data-action="close-confirm-backdrop"]').forEach(el =>
+    el.addEventListener('click', () => { state.confirmDialog = null; render(); }));
+
+  app.querySelectorAll('[data-action="confirm-yes"]').forEach(el =>
+    el.addEventListener('click', () => {
+      const cd = state.confirmDialog;
+      if (!cd) return;
+      state.confirmDialog = null;
+      if (cd.onConfirm === 'client-cancel') handleClientCancelAppointment(cd.id, cd.token);
+      if (cd.onConfirm === 'owner-cancel') handleOwnerCancelAppointment(cd.id);
+      if (cd.onConfirm === 'remove-service') handleRemoveService(cd.id);
+      if (cd.onConfirm === 'remove-barber') handleRemoveBarber(cd.id);
+    }));
+
+  const bkBarberEl = document.getElementById('bkBarber');
+  const bkDateEl = document.getElementById('bkDate');
+  if (bkBarberEl && bkDateEl) {
+    const refresh = () => refreshTimeOptionsAsync(bkBarberEl.value, bkDateEl.value);
+    bkBarberEl.addEventListener('change', refresh);
+    bkDateEl.addEventListener('change', refresh);
+  }
+
+  const bookingForm = document.getElementById('bookingForm');
+  if (bookingForm) bookingForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    handleBookingSubmit(e.submitter?.dataset?.shopId || state.bookingCtx.shopId);
+  });
+
+  const serviceForm = document.getElementById('serviceForm');
+  if (serviceForm) serviceForm.addEventListener('submit', (e) => { e.preventDefault(); handleAddService(); });
+
+  const barberForm = document.getElementById('barberForm');
+  if (barberForm) barberForm.addEventListener('submit', (e) => { e.preventDefault(); handleAddBarber(); });
+
+  const crmForm = document.getElementById('crmForm');
+  if (crmForm) crmForm.addEventListener('submit', (e) => { e.preventDefault(); handleSaveCrm(); });
+
+  app.querySelectorAll('[data-action="owner-complete-appointment"]').forEach(el =>
+    el.addEventListener('click', () => handleOwnerCompleteAppointment(el.dataset.id)));
+}
+
+async function handleBookingSubmit(shopId) {
+  const name = document.getElementById('bkName').value.trim();
+  const phone = document.getElementById('bkPhone').value.trim();
+  const serviceId = document.getElementById('bkService').value;
+  const barberId = document.getElementById('bkBarber').value;
+  const date = document.getElementById('bkDate').value;
+  const time = document.getElementById('bkTime').value;
+
+  if (!name || !serviceId || !barberId || !date || !time) {
+    showToast(t('fillFields'));
+    return;
+  }
+
+  const { data, error } = await sb.rpc('book_appointment', {
+    p_shop_id: shopId, p_service_id: serviceId, p_barber_id: barberId,
+    p_client_name: name, p_client_phone: phone, p_date: date, p_time: time
+  });
+
+  if (error) {
+    showToast((error.message || '').includes('SLOT_TAKEN') ? t('slotTaken') : t('genericError'));
+    return;
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+  const refs = getMyApptRefs();
+  refs.push({ id: row.id, token: row.client_token });
+  saveMyApptRefs(refs);
+
+  state.bookingCtx = null;
+  showToast(t('toastBooked'));
+  loadMyAppointments();
+}
+
+async function handleClientCancelAppointment(id, token) {
+  const { error } = await sb.rpc('cancel_my_appointment', { p_id: id, p_token: token });
+  if (error) { showToast(t('genericError')); return; }
+  showToast(t('toastCancelled'));
+  loadMyAppointments();
+}
+
+async function handleOwnerCancelAppointment(id) {
+  const { error } = await sb.from('appointments').update({ status: 'cancelled' }).eq('id', id);
+  if (error) { showToast(t('genericError')); return; }
+  showToast(t('toastCancelled'));
+  loadDashboardData();
+}
+
+async function handleOwnerCompleteAppointment(id) {
+  const { error } = await sb.from('appointments').update({ status: 'completed' }).eq('id', id);
+  if (error) { showToast(t('genericError')); return; }
+  showToast(t('toastCompleted'));
+  loadDashboardData();
+}
+
+async function handleAddService() {
+  const name = document.getElementById('svcName').value.trim();
+  const price = parseFloat(document.getElementById('svcPrice').value);
+  const duration = parseInt(document.getElementById('svcDuration').value, 10);
+  if (!name || isNaN(price) || isNaN(duration)) { showToast(t('fillFields')); return; }
+  const { error } = await sb.from('services').insert({ shop_id: state.myShop.id, name, price, duration_min: duration });
+  if (error) { showToast(t('genericError')); return; }
+  showToast(t('toastServiceAdded'));
+  loadDashboardData();
+}
+
+async function handleRemoveService(id) {
+  const { error } = await sb.from('services').delete().eq('id', id);
+  if (error) { showToast(t('genericError')); return; }
+  showToast(t('toastServiceRemoved'));
+  loadDashboardData();
+}
+
+async function handleAddBarber() {
+  const name = document.getElementById('barberName').value.trim();
+  if (!name) { showToast(t('fillFields')); return; }
+  const { error } = await sb.from('barbers').insert({ shop_id: state.myShop.id, name });
+  if (error) { showToast(t('genericError')); return; }
+  loadDashboardData();
+}
+
+async function handleRemoveBarber(id) {
+  const { error } = await sb.from('barbers').delete().eq('id', id);
+  if (error) { showToast(t('genericError')); return; }
+  loadDashboardData();
+}
+
+async function handleSaveCrm() {
+  const client = state.dashboard.clients.find(c => c.id === state.crmEditingId);
+  const preferences = document.getElementById('crmPrefs').value.trim();
+  const allergies = document.getElementById('crmAllergies').value.trim();
+  state.crmEditingId = null;
+  if (!client) { render(); return; }
+  const { error } = await sb.from('clients').update({ preferences, allergies }).eq('id', client.id);
+  if (error) { showToast(t('genericError')); return; }
+  showToast(t('toastCrmSaved'));
+  loadDashboardData();
+}
+
+async function handleAuthSubmit() {
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  state.authError = ''; state.authInfo = ''; state.authLoading = true;
+  render();
+
+  const result = state.authView === 'login'
+    ? await sb.auth.signInWithPassword({ email, password })
+    : await sb.auth.signUp({ email, password });
+
+  state.authLoading = false;
+  if (result.error) { state.authError = result.error.message; render(); return; }
+
+  state.session = result.data.session;
+  if (!state.session) {
+    state.authInfo = t('loadingText') === 'Loading...' ? 'Check your email to confirm your account, then log in.' : state.authInfo;
+  }
+  render();
+  if (state.session) ensureDashboardData();
+}
+
+async function handleCreateShop() {
+  const name = document.getElementById('newShopName').value.trim();
+  const address = document.getElementById('newShopAddress').value.trim();
+  if (!name || !address) { state.authError = t('fillFields'); render(); return; }
+  state.authError = ''; state.authLoading = true; render();
+  const { data, error } = await sb.from('shops').insert({ owner_id: state.session.user.id, name, address, rating: 5.0 }).select().single();
+  state.authLoading = false;
+  if (error) { state.authError = error.message; render(); return; }
+  state.myShop = data;
+  render();
+  loadDashboardData();
+  loadShops();
+}
+
+/* =========================================================
+   INIT
+========================================================= */
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (state.confirmDialog) { state.confirmDialog = null; render(); }
+  else if (state.crmEditingId !== null) { state.crmEditingId = null; render(); }
+  else if (state.bookingCtx) { state.bookingCtx = null; render(); }
+});
+
+(async function init() {
+  const { data } = await sb.auth.getSession();
+  state.session = data.session;
+  render();
+  loadShops();
+  loadMyAppointments();
+  if (state.session && state.view === 'dashboard') ensureDashboardData();
+})();
+render();
+</script>
+</body>
+</html>

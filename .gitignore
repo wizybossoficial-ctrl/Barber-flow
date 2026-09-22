@@ -1,0 +1,10 @@
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Local caches
+node_modules/
