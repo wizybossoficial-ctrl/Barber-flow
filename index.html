@@ -778,11 +778,13 @@ function renderClientView() {
             <div class="p-5">
               <div class="flex items-center justify-between mb-1">
                 <h4 class="font-heading font-bold text-lg">${shop.name}</h4>
-                <div class="flex items-center gap-1 text-gold text-sm font-semibold">
-                  <i class="fa-solid fa-star"></i> ${shop.rating}
+                <div class="flex flex-col items-end gap-1">
+                  <div class="flex items-center gap-1 text-gold text-sm font-semibold">
+                    <i class="fa-solid fa-star"></i> ${shop.rating}
+                  </div>
+                  <span class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border ${shop.is_open !== false ? 'bg-green-500/15 text-green-400 border-green-500/30' : 'bg-red-500/15 text-red-400 border-red-500/30'}"><i class="fa-solid fa-circle text-[6px]"></i>${shop.is_open !== false ? t('shopOpen') : t('shopClosed')}</span>
                 </div>
               </div>
-              <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${shop.is_open !== false ? 'bg-green-500/15 text-green-400 border-green-500/30' : 'bg-red-500/15 text-red-400 border-red-500/30'}"><i class="fa-solid fa-circle text-[7px]"></i>${shop.is_open !== false ? t('shopOpen') : t('shopClosed')}</span>
               <p class="text-xs text-slate-400 mb-1"><i class="fa-solid fa-user-tie mr-1 text-gold"></i>${shop.barber_count || 0} ${t('barberCount')}</p>
               <p class="text-xs text-slate-400 mb-4"><i class="fa-solid fa-location-dot mr-1 text-gold"></i>${shop.address}</p>
               <div class="grid grid-cols-2 gap-2">
