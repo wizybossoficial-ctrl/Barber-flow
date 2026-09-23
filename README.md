@@ -10,6 +10,7 @@ GoldCut is a polished booking and management web app for a barbershop. It suppor
 - Owner dashboard with appointment tracking
 - Service and barber management
 - Shop photo upload through Supabase Storage
+- Configurable shop opening days and hours
 - CRM notes for client preferences and allergies
 - Supabase authentication and database integration
 - Local persistence for client-side favorites and appointment references
@@ -42,6 +43,7 @@ http://localhost:8000/
 3. Run the provided SQL schema and RPC migrations in Supabase.
 4. Confirm the `shops`, `services`, `barbers`, `appointments`, and `clients` tables exist and RLS policies are applied.
 5. Confirm the public `shop-images` Storage bucket exists for barbershop photos.
+6. Confirm the `shops.open_days`, `shops.opening_time`, and `shops.closing_time` fields exist for shop schedules.
 
 ## Deploy
 

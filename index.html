@@ -164,6 +164,14 @@ const DICT = {
     openingTime: "Abertura",
     closingTime: "Fechamento",
     hoursNotSet: "Horário não informado",
+    openDays: "Dias de funcionamento",
+    day_monday: "Segunda-feira",
+    day_tuesday: "Terça-feira",
+    day_wednesday: "Quarta-feira",
+    day_thursday: "Quinta-feira",
+    day_friday: "Sexta-feira",
+    day_saturday: "Sábado",
+    day_sunday: "Domingo",
     createShopBtn: "Criar Barbearia",
     barbersTitle: "Barbeiros",
     newBarberName: "Nome do barbeiro",
@@ -272,6 +280,14 @@ const DICT = {
     openingTime: "Opening",
     closingTime: "Closing",
     hoursNotSet: "Hours not set",
+    openDays: "Open days",
+    day_monday: "Monday",
+    day_tuesday: "Tuesday",
+    day_wednesday: "Wednesday",
+    day_thursday: "Thursday",
+    day_friday: "Friday",
+    day_saturday: "Saturday",
+    day_sunday: "Sunday",
     createShopBtn: "Create Barbershop",
     barbersTitle: "Barbers",
     newBarberName: "Barber name",
@@ -379,6 +395,14 @@ const DICT = {
     openingTime: "Ouverture",
     closingTime: "Fermeture",
     hoursNotSet: "Horaires non renseignés",
+    openDays: "Jours d'ouverture",
+    day_monday: "Lundi",
+    day_tuesday: "Mardi",
+    day_wednesday: "Mercredi",
+    day_thursday: "Jeudi",
+    day_friday: "Vendredi",
+    day_saturday: "Samedi",
+    day_sunday: "Dimanche",
     createShopBtn: "Créer le Salon",
     barbersTitle: "Barbiers",
     newBarberName: "Nom du barbier",
@@ -435,6 +459,7 @@ const state = {
 };
 
 const TIME_SLOTS = ['09:00','09:30','10:00','10:30','11:00','11:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30','17:00','17:30'];
+const OPEN_DAYS = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
 
 /* =========================================================
    HELPERS
@@ -790,6 +815,7 @@ function renderShopPage() {
             <h2 class="font-heading text-2xl sm:text-3xl font-extrabold mb-2">${shop.name}</h2>
             <p class="text-sm text-slate-400"><i class="fa-solid fa-location-dot mr-2 text-gold"></i>${shop.address}</p>
               <p class="text-sm text-slate-400 mt-2"><i class="fa-regular fa-clock mr-2 text-gold"></i>${shop.opening_time && shop.closing_time ? `${shop.opening_time.slice(0, 5)} - ${shop.closing_time.slice(0, 5)}` : t('hoursNotSet')}</p>
+              <p class="text-sm text-slate-400 mt-2"><i class="fa-regular fa-calendar mr-2 text-gold"></i>${(shop.open_days || OPEN_DAYS).map(day => t(`day_${day}`)).join(', ')}</p>
           </div>
           <div class="flex items-center gap-1 text-gold font-semibold"><i class="fa-solid fa-star"></i>${shop.rating}</div>
         </div>
@@ -1169,6 +1195,12 @@ function renderShopEditModal() {
             <label class="text-xs text-slate-500">${t('closingTime')}<input id="editClosingTime" type="time" value="${shop.closing_time || ''}" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-gold" /></label>
           </div>
         </div>
+        <fieldset>
+          <legend class="text-xs text-slate-400 block mb-2">${t('openDays')}</legend>
+          <div class="grid grid-cols-2 gap-2">
+            ${OPEN_DAYS.map(day => `<label class="flex items-center gap-2 bg-slate-800/70 rounded-lg px-3 py-2 text-sm text-slate-300"><input type="checkbox" name="openDays" value="${day}" ${(shop.open_days || OPEN_DAYS).includes(day) ? 'checked' : ''} class="accent-gold" />${t(`day_${day}`)}</label>`).join('')}
+          </div>
+        </fieldset>
         <div>
           <label class="text-xs text-slate-400 block mb-1">${t('shopImageLabel')}</label>
           ${shop.image ? `<img src="${shop.image}" alt="${shop.name}" class="w-full h-32 object-cover rounded-lg mb-2" />` : ''}
@@ -1421,8 +1453,10 @@ async function handleSaveShop() {
   const address = document.getElementById('editShopAddress').value.trim();
   const openingTime = document.getElementById('editOpeningTime').value || null;
   const closingTime = document.getElementById('editClosingTime').value || null;
+  const openDays = Array.from(document.querySelectorAll('input[name="openDays"]:checked')).map(input => input.value);
   const imageFile = document.getElementById('editShopImage').files[0];
   if (!name || !address) { state.shopEditError = t('fillFields'); render(); return; }
+  if (openDays.length === 0) { state.shopEditError = t('openDays'); render(); return; }
   if (openingTime && closingTime && openingTime >= closingTime) { state.shopEditError = `${t('openingTime')} < ${t('closingTime')}`; render(); return; }
   if (imageFile && (!imageFile.type.startsWith('image/') || imageFile.size > 5 * 1024 * 1024)) {
     state.shopEditError = t('shopImageHint'); render(); return;
@@ -1438,7 +1472,7 @@ async function handleSaveShop() {
     image = sb.storage.from('shop-images').getPublicUrl(path).data.publicUrl;
   }
 
-  const { data, error } = await sb.from('shops').update({ name, address, image, opening_time: openingTime, closing_time: closingTime }).eq('id', state.myShop.id).eq('owner_id', state.session.user.id).select().single();
+  const { data, error } = await sb.from('shops').update({ name, address, image, opening_time: openingTime, closing_time: closingTime, open_days: openDays }).eq('id', state.myShop.id).eq('owner_id', state.session.user.id).select().single();
   state.shopSaving = false;
   if (error) { state.shopEditError = error.message; render(); return; }
   state.myShop = data;
