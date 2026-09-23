@@ -1,6 +1,6 @@
-# GoldCut Barber Shop Booking
+# FOCO Barber Shop Booking
 
-GoldCut is a polished booking and management web app for a barbershop. It supports client-side booking, partner shop discovery, and an owner dashboard for scheduling, service pricing, staff management, and CRM notes.
+FOCO is a polished booking and management web app for a barbershop. It supports client-side booking, partner shop discovery, and an owner dashboard for scheduling, service pricing, staff management, and CRM notes.
 
 ## Features
 
