@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>FOCO | Barber Shop Booking</title>
+<link rel="icon" type="image/jpeg" href="foco-logo.jpg" />
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -742,8 +743,8 @@ function renderHeader() {
   <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-4 flex-wrap">
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl gold-gradient flex items-center justify-center shadow-lg shadow-gold/20">
-          <i class="fa-solid fa-scissors text-slate-950"></i>
+        <div class="w-10 h-10 rounded-xl bg-slate-800 border border-gold/40 flex items-center justify-center shadow-lg shadow-gold/20 overflow-hidden">
+          <img src="foco-logo.jpg" alt="FOCO" class="w-full h-full object-contain" />
         </div>
         <div>
           <h1 class="font-heading font-bold text-lg leading-none">${t('appName')}</h1>
@@ -784,7 +785,7 @@ function renderHeader() {
 function renderFooter() {
   return `
   <footer class="border-t border-slate-800 py-6 text-center text-xs text-slate-500">
-    <i class="fa-solid fa-scissors text-gold mr-1"></i> ${t('appName')} · &copy; ${new Date().getFullYear()}
+    <img src="foco-logo.jpg" alt="FOCO" class="inline-block w-5 h-5 object-contain rounded align-middle mr-1" /> ${t('appName')} · &copy; ${new Date().getFullYear()}
   </footer>`;
 }
 
