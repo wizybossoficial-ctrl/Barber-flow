@@ -183,6 +183,7 @@ const DICT = {
     hoursNotSet: "Horário não informado",
     shopOpen: "Aberta",
     shopClosed: "Fechada",
+    shopClosedAlert: "Esta barbearia está fechada no momento.",
     shopStatus: "Estado da barbearia",
     openDays: "Dias de funcionamento",
     day_monday: "Segunda-feira",
@@ -319,6 +320,7 @@ const DICT = {
     hoursNotSet: "Hours not set",
     shopOpen: "Open",
     shopClosed: "Closed",
+    shopClosedAlert: "This barbershop is currently closed.",
     shopStatus: "Shop status",
     openDays: "Open days",
     day_monday: "Monday",
@@ -454,6 +456,7 @@ const DICT = {
     hoursNotSet: "Horaires non renseignés",
     shopOpen: "Ouvert",
     shopClosed: "Fermé",
+    shopClosedAlert: "Ce salon est actuellement fermé.",
     shopStatus: "État du salon",
     openDays: "Jours d'ouverture",
     day_monday: "Lundi",
@@ -529,9 +532,21 @@ function showToast(msg) {
   render();
   setTimeout(() => { state.toast = null; renderToastOnly(); }, 2600);
 }
+function escapeHTML(value) {
+  return String(value ?? '').replace(/[&<>"']/g, character => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[character]));
+}
 function money(n) { return Number(n || 0).toLocaleString('fr-FR') + ' FCFA'; }
 function isValidGuineaBissauPhone(value) { return !value || /^\+245\s?\d{7}$/.test(value); }
 function connectionErrorMessage(error) { return navigator.onLine ? (error?.message || t('genericError')) : t('connectionError'); }
+function dayKeyFromDate(date) {
+  return OPEN_DAYS[new Date(`${date}T00:00:00`).getDay() === 0 ? 6 : new Date(`${date}T00:00:00`).getDay() - 1];
+}
 function statusBadge(status) {
   const map = {
     scheduled: { text: t('statusScheduled'), cls: 'bg-blue-500/15 text-blue-400 border-blue-500/30' },
@@ -583,6 +598,11 @@ async function loadMyAppointments() {
 }
 
 async function openBooking(shopId) {
+  const shop = state.shops.find(item => item.id === shopId);
+  if (!shop || shop.is_open !== true) {
+    showToast(t('shopClosedAlert'));
+    return;
+  }
   state.bookingCtx = { shopId, services: [], barbers: [] };
   render();
   const [{ data: services }, { data: barbers }] = await Promise.all([
@@ -692,7 +712,7 @@ function renderToast() {
     <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] fade-in">
       <div class="bg-slate-800 border border-gold/40 text-slate-50 px-5 py-3 rounded-xl shadow-2xl shadow-black/50 flex items-center gap-2">
         <i class="fa-solid fa-circle-check text-gold"></i>
-        <span class="text-sm font-medium">${state.toast}</span>
+        <span class="text-sm font-medium">${escapeHTML(state.toast)}</span>
       </div>
     </div>` : ''}</div>`;
 }
@@ -797,8 +817,8 @@ function renderClientView() {
             <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
               <div class="flex items-start justify-between mb-2">
                 <div>
-                  <p class="font-semibold text-sm">${a.shop_name}</p>
-                  <p class="text-xs text-slate-400">${a.service_name || ''} · ${a.barber_name || ''}</p>
+                  <p class="font-semibold text-sm">${escapeHTML(a.shop_name)}</p>
+                  <p class="text-xs text-slate-400">${escapeHTML(a.service_name || '')} · ${escapeHTML(a.barber_name || '')}</p>
                 </div>
                 ${statusBadge(a.status)}
               </div>
@@ -818,7 +838,7 @@ function renderClientView() {
       </h3>
       <div class="relative mb-5">
         <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
-        <input id="shopSearchInput" type="text" value="${state.shopSearch || ''}" placeholder="${t('searchPlaceholder')}" aria-label="${t('searchPlaceholder')}"
+        <input id="shopSearchInput" type="text" value="${escapeHTML(state.shopSearch || '')}" placeholder="${t('searchPlaceholder')}" aria-label="${t('searchPlaceholder')}"
           class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-11 pr-4 py-3 text-sm focus:outline-none focus:border-gold" />
       </div>
       ${state.shops.length === 0 ? `
@@ -830,11 +850,11 @@ function renderClientView() {
         ${filteredShops.map(shop => `
           <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden card-hover">
             <div class="h-40 w-full bg-slate-800 overflow-hidden">
-              <img src="${shop.image || 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800&q=80'}" alt="${shop.name}" class="w-full h-full object-cover" loading="lazy" />
+              <img src="${escapeHTML(shop.image || 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800&q=80')}" alt="${escapeHTML(shop.name)}" class="w-full h-full object-cover" loading="lazy" />
             </div>
             <div class="p-5">
               <div class="flex items-center justify-between mb-1">
-                <h4 class="font-heading font-bold text-lg">${shop.name}</h4>
+                <h4 class="font-heading font-bold text-lg">${escapeHTML(shop.name)}</h4>
                 <div class="flex flex-col items-end gap-1">
                   <div class="flex items-center gap-1 text-gold text-sm font-semibold">
                     <i class="fa-solid fa-star"></i> ${shop.rating}
@@ -843,7 +863,7 @@ function renderClientView() {
                 </div>
               </div>
               <p class="text-xs text-slate-400 mb-1"><i class="fa-solid fa-user-tie mr-1 text-gold"></i>${shop.barber_count || 0} ${t('barberCount')}</p>
-              <p class="text-xs text-slate-400 mb-4"><i class="fa-solid fa-location-dot mr-1 text-gold"></i>${shop.address}</p>
+              <p class="text-xs text-slate-400 mb-4"><i class="fa-solid fa-location-dot mr-1 text-gold"></i>${escapeHTML(shop.address)}</p>
               <div class="grid grid-cols-2 gap-2">
                 <button data-action="view-shop" data-shop-id="${shop.id}"
                   class="py-2.5 rounded-xl border border-slate-700 text-slate-200 font-semibold text-sm hover:border-gold hover:text-gold transition">
@@ -876,14 +896,14 @@ function renderShopPage() {
     </button>
     <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden mb-8">
       <div class="h-56 sm:h-72 bg-slate-800 overflow-hidden">
-        <img src="${shop.image || 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=1200&q=80'}" alt="${shop.name}" class="w-full h-full object-cover" />
+        <img src="${escapeHTML(shop.image || 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=1200&q=80')}" alt="${escapeHTML(shop.name)}" class="w-full h-full object-cover" />
       </div>
       <div class="p-6 sm:p-8">
         <div class="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <h2 class="font-heading text-2xl sm:text-3xl font-extrabold mb-2">${shop.name}</h2>
+            <h2 class="font-heading text-2xl sm:text-3xl font-extrabold mb-2">${escapeHTML(shop.name)}</h2>
             <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${shop.is_open !== false ? 'bg-green-500/15 text-green-400 border-green-500/30' : 'bg-red-500/15 text-red-400 border-red-500/30'}"><i class="fa-solid fa-circle text-[7px]"></i>${shop.is_open !== false ? t('shopOpen') : t('shopClosed')}</span>
-            <p class="text-sm text-slate-400"><i class="fa-solid fa-location-dot mr-2 text-gold"></i>${shop.address}</p>
+            <p class="text-sm text-slate-400"><i class="fa-solid fa-location-dot mr-2 text-gold"></i>${escapeHTML(shop.address)}</p>
               <p class="text-sm text-slate-400 mt-2"><i class="fa-regular fa-clock mr-2 text-gold"></i>${shop.opening_time && shop.closing_time ? `${shop.opening_time.slice(0, 5)} - ${shop.closing_time.slice(0, 5)}` : t('hoursNotSet')}</p>
               <p class="text-sm text-slate-400 mt-2"><i class="fa-regular fa-calendar mr-2 text-gold"></i>${(shop.open_days || OPEN_DAYS).map(day => t(`day_${day}`)).join(', ')}</p>
           </div>
@@ -893,10 +913,10 @@ function renderShopPage() {
           <span class="bg-slate-800 rounded-lg px-3 py-2"><i class="fa-solid fa-user-tie text-gold mr-2"></i>${shop.barber_count || pageData.barbers.length} ${t('barberCount')}</span>
           <span class="bg-slate-800 rounded-lg px-3 py-2"><i class="fa-solid fa-tags text-gold mr-2"></i>${pageData.services.length} ${t('shopServices').toLowerCase()}</span>
         </div>
-        ${shop.description ? `<p class="text-sm text-slate-300 mt-5 max-w-2xl">${shop.description}</p>` : ''}
+        ${shop.description ? `<p class="text-sm text-slate-300 mt-5 max-w-2xl">${escapeHTML(shop.description)}</p>` : ''}
         <div class="flex flex-wrap gap-3 mt-5">
           ${shop.whatsapp ? `<a href="https://wa.me/${shop.whatsapp.replace(/\D/g, '')}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 bg-green-500/15 border border-green-500/30 text-green-400 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-green-500/25 transition"><i class="fa-brands fa-whatsapp text-lg"></i>${t('whatsappContact')}</a>` : ''}
-          ${shop.phone ? `<span class="inline-flex items-center gap-2 bg-slate-800 text-slate-300 px-4 py-2.5 rounded-xl text-sm"><i class="fa-solid fa-phone text-gold"></i>${shop.phone}</span>` : ''}
+          ${shop.phone ? `<span class="inline-flex items-center gap-2 bg-slate-800 text-slate-300 px-4 py-2.5 rounded-xl text-sm"><i class="fa-solid fa-phone text-gold"></i>${escapeHTML(shop.phone)}</span>` : ''}
         </div>
         <div class="mt-5 flex flex-wrap gap-2 text-xs text-slate-300">
           <span class="text-slate-400 mr-1">${t('paymentOptions')}:</span>
@@ -911,7 +931,7 @@ function renderShopPage() {
         <div class="space-y-3">
           ${pageData.services.length === 0 ? `<div class="bg-slate-900 border border-slate-800 rounded-xl p-5 text-sm text-slate-500">${t('noServicesYet')}</div>` : pageData.services.map(service => `
             <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center justify-between gap-4">
-              <div><p class="font-semibold">${service.name}</p><p class="text-xs text-slate-400 mt-1">${service.duration_min} ${t('minPrice')}</p></div>
+              <div><p class="font-semibold">${escapeHTML(service.name)}</p><p class="text-xs text-slate-400 mt-1">${service.duration_min} ${t('minPrice')}</p></div>
               <div class="text-right"><p class="text-gold font-heading font-bold">${money(service.price)}</p><button data-action="open-booking" data-shop-id="${shop.id}" class="text-xs text-slate-400 hover:text-gold mt-1">${t('bookNow')} <i class="fa-solid fa-arrow-right ml-1"></i></button></div>
             </div>`).join('')}
         </div>
@@ -922,7 +942,7 @@ function renderShopPage() {
           ${pageData.barbers.length === 0 ? `<div class="bg-slate-900 border border-slate-800 rounded-xl p-5 text-sm text-slate-500">${t('noBarbersOnShop')}</div>` : pageData.barbers.map(barber => `
             <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center gap-3">
               <div class="w-11 h-11 rounded-full bg-gold/15 text-gold flex items-center justify-center"><i class="fa-solid fa-user"></i></div>
-              <p class="font-semibold">${barber.name}</p>
+              <p class="font-semibold">${escapeHTML(barber.name)}</p>
             </div>`).join('')}
         </div>
       </div>
@@ -946,7 +966,7 @@ function renderBookingModal() {
         <h3 id="bookingModalTitle" class="font-heading text-xl font-bold">${t('bookingTitle')}</h3>
         <button data-action="close-modal" aria-label="${t('close')}" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
       </div>
-      <p class="text-sm text-gold font-semibold mb-4">${shop.name}</p>
+      <p class="text-sm text-gold font-semibold mb-4">${escapeHTML(shop.name)}</p>
 
       <form id="bookingForm" class="space-y-4">
         <div>
@@ -969,14 +989,14 @@ function renderBookingModal() {
           <label class="text-xs text-slate-400 block mb-1">${t('serviceLabel')} *</label>
           <select id="bkService" required class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold">
             <option value="">${t('selectOption')}</option>
-            ${services.map(s => `<option value="${s.id}">${s.name} · ${money(s.price)} (${s.duration_min} ${t('minPrice')})</option>`).join('')}
+            ${services.map(s => `<option value="${s.id}">${escapeHTML(s.name)} · ${money(s.price)} (${s.duration_min} ${t('minPrice')})</option>`).join('')}
           </select>
         </div>
         <div>
           <label class="text-xs text-slate-400 block mb-1">${t('barberLabel')} *</label>
           <select id="bkBarber" required class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold">
             <option value="">${t('selectOption')}</option>
-            ${barbers.map(b => `<option value="${b.id}">${b.name}</option>`).join('')}
+            ${barbers.map(b => `<option value="${b.id}">${escapeHTML(b.name)}</option>`).join('')}
           </select>
         </div>
         <div class="grid grid-cols-2 gap-3">
@@ -1017,8 +1037,8 @@ function renderAuthGate() {
       <h2 class="font-heading text-xl font-bold">${t('authOwnerTitle')}</h2>
       <p class="text-sm text-slate-400 mt-1">${t('authOwnerSubtitle')}</p>
     </div>
-    ${state.authError ? `<div class="mb-4 text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">${state.authError}</div>` : ''}
-    ${state.authInfo ? `<div class="mb-4 text-sm text-gold bg-gold/10 border border-gold/30 rounded-lg px-3 py-2">${state.authInfo}</div>` : ''}
+    ${state.authError ? `<div class="mb-4 text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">${escapeHTML(state.authError)}</div>` : ''}
+    ${state.authInfo ? `<div class="mb-4 text-sm text-gold bg-gold/10 border border-gold/30 rounded-lg px-3 py-2">${escapeHTML(state.authInfo)}</div>` : ''}
     <form id="authForm" class="space-y-4">
       <div>
         <label class="text-xs text-slate-400 block mb-1">${t('authEmail')}</label>
@@ -1045,7 +1065,7 @@ function renderCreateShopForm() {
       <div class="w-14 h-14 rounded-2xl gold-gradient flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-plus text-slate-950 text-xl"></i></div>
       <h2 class="font-heading text-xl font-bold">${t('createShopTitle')}</h2>
     </div>
-    ${state.authError ? `<div class="mb-4 text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">${state.authError}</div>` : ''}
+    ${state.authError ? `<div class="mb-4 text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">${escapeHTML(state.authError)}</div>` : ''}
     <form id="createShopForm" class="space-y-4">
       <div>
         <label class="text-xs text-slate-400 block mb-1">${t('shopNameLabel')}</label>
@@ -1090,7 +1110,7 @@ function renderDashboardView() {
     <div class="mb-8">
       <div class="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h2 class="font-heading text-2xl sm:text-3xl font-extrabold mb-1">${shop.name} <span class="text-gold">· ${t('navDashboard')}</span></h2>
+              <h2 class="font-heading text-2xl sm:text-3xl font-extrabold mb-1">${escapeHTML(shop.name)} <span class="text-gold">· ${t('navDashboard')}</span></h2>
           <p class="text-slate-400 text-sm">${t('yourShop')}</p>
         </div>
         <button data-action="edit-shop" class="gold-gradient text-slate-950 font-semibold text-sm px-4 py-2.5 rounded-xl hover:brightness-110 transition">
@@ -1135,9 +1155,9 @@ function renderDashboardView() {
               const svc = services.find(s => s.id === a.service_id); const brb = barbers.find(b => b.id === a.barber_id);
               return `
               <tr class="border-b border-slate-800/60 hover:bg-slate-800/30">
-                <td class="py-3 pr-3 font-medium">${a.client_name}</td>
-                <td class="py-3 pr-3 text-slate-300">${svc ? svc.name : '-'}</td>
-                <td class="py-3 pr-3 text-slate-300">${brb ? brb.name : '-'}</td>
+                <td class="py-3 pr-3 font-medium">${escapeHTML(a.client_name)}</td>
+                <td class="py-3 pr-3 text-slate-300">${escapeHTML(svc ? svc.name : '-')}</td>
+                <td class="py-3 pr-3 text-slate-300">${escapeHTML(brb ? brb.name : '-')}</td>
                 <td class="py-3 pr-3 text-gold font-semibold">${a.appt_date} · ${a.appt_time}</td>
                 <td class="py-3 pr-3"><div>${statusBadge(a.status)}</div><p class="text-[11px] text-slate-500 mt-1">${a.payment_method === 'mobile_money' ? t('paymentMobileMoney') : t('paymentCash')} · ${paymentStatusLabel(a.payment_status)}</p>${a.payment_status === 'pending' ? `<button data-action="mark-payment-paid" data-id="${a.id}" class="text-[11px] text-gold hover:underline mt-1">${t('markPaid')}</button>` : ''}</td>
                 <td class="py-3 pr-3">
@@ -1168,7 +1188,7 @@ function renderDashboardView() {
           ${services.map(s => `
             <div class="flex items-center justify-between bg-slate-800/60 rounded-lg px-3 py-2">
               <div>
-                <p class="text-sm font-medium">${s.name}</p>
+                <p class="text-sm font-medium">${escapeHTML(s.name)}</p>
                 <p class="text-xs text-slate-400">${money(s.price)} · ${s.duration_min} ${t('minPrice')}</p>
               </div>
               <button data-action="request-remove-service" data-id="${s.id}" aria-label="${t('remove')}" class="text-red-400 hover:text-red-300 w-8 h-8 rounded-lg hover:bg-red-500/10 transition">
@@ -1192,7 +1212,7 @@ function renderDashboardView() {
         <div class="space-y-2 mb-4 max-h-56 overflow-y-auto pr-1">
           ${barbers.length === 0 ? `<p class="text-sm text-slate-500">${t('noBarbersYet')}</p>` : barbers.map(b => `
             <div class="flex items-center justify-between bg-slate-800/60 rounded-lg px-3 py-2">
-              <p class="text-sm font-medium">${b.name}</p>
+              <p class="text-sm font-medium">${escapeHTML(b.name)}</p>
               <button data-action="request-remove-barber" data-id="${b.id}" aria-label="${t('remove')}" class="text-red-400 hover:text-red-300 w-8 h-8 rounded-lg hover:bg-red-500/10 transition">
                 <i class="fa-solid fa-trash"></i>
               </button>
@@ -1212,7 +1232,7 @@ function renderDashboardView() {
           ${clients.length === 0 ? `<p class="text-sm text-slate-500">${t('crmNoClients')}</p>` : clientStats.map(c => `
             <div class="bg-slate-800/60 rounded-lg p-3">
               <div class="flex items-start justify-between mb-1">
-                <p class="text-sm font-semibold">${c.name}</p>
+                <p class="text-sm font-semibold">${escapeHTML(c.name)}</p>
                 <button data-action="edit-crm" data-id="${c.id}" class="text-xs text-gold hover:underline"><i class="fa-solid fa-pen mr-1"></i>${t('crmEdit')}</button>
               </div>
               <p class="text-xs text-slate-400 mb-0.5"><i class="fa-solid fa-scissors text-gold mr-1"></i>${t('crmPreferences')}: ${c.preferences || '-'}</p>
@@ -1235,17 +1255,17 @@ function renderCrmModal() {
   <div class="fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4" data-action="close-crm-backdrop">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6 fade-in" role="dialog" aria-modal="true" aria-labelledby="crmModalTitle" onclick="event.stopPropagation()">
       <div class="flex items-center justify-between mb-5">
-        <h3 id="crmModalTitle" class="font-heading text-xl font-bold">${client.name}</h3>
+        <h3 id="crmModalTitle" class="font-heading text-xl font-bold">${escapeHTML(client.name)}</h3>
         <button data-action="close-crm" aria-label="${t('close')}" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
       </div>
       <form id="crmForm" class="space-y-4">
         <div>
           <label class="text-xs text-slate-400 block mb-1">${t('crmPreferences')}</label>
-          <textarea id="crmPrefs" rows="3" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold">${client.preferences || ''}</textarea>
+          <textarea id="crmPrefs" rows="3" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold">${escapeHTML(client.preferences || '')}</textarea>
         </div>
         <div>
           <label class="text-xs text-slate-400 block mb-1">${t('crmAllergies')}</label>
-          <textarea id="crmAllergies" rows="2" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold">${client.allergies || ''}</textarea>
+          <textarea id="crmAllergies" rows="2" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold">${escapeHTML(client.allergies || '')}</textarea>
         </div>
         <div class="flex gap-3 pt-2">
           <button type="button" data-action="close-crm" class="flex-1 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 transition text-sm font-medium">${t('close')}</button>
@@ -1270,19 +1290,19 @@ function renderShopEditModal() {
       <form id="shopEditForm" class="space-y-4">
         <div>
           <label class="text-xs text-slate-400 block mb-1">${t('shopNameLabel')}</label>
-          <input id="editShopName" type="text" required value="${shop.name || ''}" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+          <input id="editShopName" type="text" required value="${escapeHTML(shop.name || '')}" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
         </div>
         <div>
           <label class="text-xs text-slate-400 block mb-1">${t('shopAddressLabel')}</label>
-          <input id="editShopAddress" type="text" required value="${shop.address || ''}" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
+          <input id="editShopAddress" type="text" required value="${escapeHTML(shop.address || '')}" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
         </div>
         <div>
           <label class="text-xs text-slate-400 block mb-1">${t('shopDescription')}</label>
-          <textarea id="editShopDescription" rows="3" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold">${shop.description || ''}</textarea>
+          <textarea id="editShopDescription" rows="3" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold">${escapeHTML(shop.description || '')}</textarea>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <label class="text-xs text-slate-400 block mb-1">${t('shopPhone')}<input id="editShopPhone" type="tel" pattern="\\+245\\s?\\d{7}" value="${shop.phone || ''}" placeholder="${t('phoneHint')}" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" /></label>
-          <label class="text-xs text-slate-400 block mb-1">WhatsApp<input id="editShopWhatsapp" type="tel" pattern="\\+245\\s?\\d{7}" value="${shop.whatsapp || ''}" placeholder="${t('phoneHint')}" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" /></label>
+          <label class="text-xs text-slate-400 block mb-1">${t('shopPhone')}<input id="editShopPhone" type="tel" pattern="\\+245\\s?\\d{7}" value="${escapeHTML(shop.phone || '')}" placeholder="${t('phoneHint')}" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" /></label>
+          <label class="text-xs text-slate-400 block mb-1">WhatsApp<input id="editShopWhatsapp" type="tel" pattern="\\+245\\s?\\d{7}" value="${escapeHTML(shop.whatsapp || '')}" placeholder="${t('phoneHint')}" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" /></label>
         </div>
         <div>
           <p class="text-xs text-slate-400 block mb-2">${t('openingHours')}</p>
@@ -1310,7 +1330,7 @@ function renderShopEditModal() {
         </fieldset>
         <div>
           <label class="text-xs text-slate-400 block mb-1">${t('shopImageLabel')}</label>
-          ${shop.image ? `<img src="${shop.image}" alt="${shop.name}" class="w-full h-32 object-cover rounded-lg mb-2" />` : ''}
+          ${shop.image ? `<img src="${escapeHTML(shop.image)}" alt="${escapeHTML(shop.name)}" class="w-full h-32 object-cover rounded-lg mb-2" />` : ''}
           <input id="editShopImage" type="file" accept="image/jpeg,image/png,image/webp" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm file:mr-3 file:border-0 file:rounded-md file:bg-gold file:px-3 file:py-1.5 file:font-semibold file:text-slate-950" />
           <p class="text-xs text-slate-500 mt-1">${t('shopImageHint')}</p>
         </div>
@@ -1461,6 +1481,7 @@ function attachHandlers() {
 }
 
 async function handleBookingSubmit(shopId) {
+  const shop = state.shops.find(item => item.id === shopId);
   const name = document.getElementById('bkName').value.trim();
   const phone = document.getElementById('bkPhone').value.trim();
   const paymentMethod = document.getElementById('bkPayment').value;
@@ -1469,8 +1490,24 @@ async function handleBookingSubmit(shopId) {
   const date = document.getElementById('bkDate').value;
   const time = document.getElementById('bkTime').value;
 
-  if (!name || !serviceId || !barberId || !date || !time) {
+  if (!shop || shop.is_open !== true) {
+    showToast(t('shopClosedAlert'));
+    return;
+  }
+  if (!name || !serviceId || !barberId || !date || !time || !paymentMethod) {
     showToast(t('fillFields'));
+    return;
+  }
+  if (!state.bookingCtx || !state.bookingCtx.services.some(service => service.id === serviceId) || !state.bookingCtx.barbers.some(barber => barber.id === barberId)) {
+    showToast(t('genericError'));
+    return;
+  }
+  if (date < todayStr || !TIME_SLOTS.includes(time)) {
+    showToast(t('fillFields'));
+    return;
+  }
+  if (!(shop.open_days || OPEN_DAYS).includes(dayKeyFromDate(date))) {
+    showToast(t('genericError'));
     return;
   }
   if (!isValidGuineaBissauPhone(phone)) {
@@ -1496,7 +1533,12 @@ async function handleBookingSubmit(shopId) {
   const refs = getMyApptRefs();
   refs.push({ id: row.id, token: row.client_token });
   saveMyApptRefs(refs);
-  await sb.rpc('set_appointment_payment', { p_id: row.id, p_token: row.client_token, p_method: paymentMethod });
+  const paymentResult = await sb.rpc('set_appointment_payment', { p_id: row.id, p_token: row.client_token, p_method: paymentMethod });
+  if (paymentResult.error) {
+    await sb.rpc('cancel_my_appointment', { p_id: row.id, p_token: row.client_token });
+    showToast(connectionErrorMessage(paymentResult.error));
+    return;
+  }
 
   state.bookingCtx = null;
   showToast(t('toastBooked'));
