@@ -83,6 +83,23 @@ const DICT = {
     shopBarbers: "Nossa equipe",
     noServicesYet: "Nenhum serviço cadastrado ainda.",
     noBarbersOnShop: "Nenhum barbeiro cadastrado ainda.",
+    shopDescription: "Descrição da barbearia",
+    shopPhone: "Telefone da barbearia",
+    whatsappContact: "Contactar no WhatsApp",
+    paymentOptions: "Opções de pagamento",
+    cashPayment: "Pagamento em dinheiro",
+    mobileMoneyPayment: "Pagamento móvel",
+    phoneHint: "Use o formato +245 955 1234",
+    offlineMessage: "Você está offline. Algumas funções podem não estar disponíveis.",
+    connectionError: "Não foi possível conectar. Verifique a internet e tente novamente.",
+    paymentMethod: "Método de pagamento",
+    paymentCash: "Dinheiro",
+    paymentMobileMoney: "Pagamento móvel",
+    selectPayment: "Escolha o pagamento",
+    paymentPending: "Pagamento pendente",
+    paymentPaid: "Pago",
+    paymentNotApplicable: "Pagamento no local",
+    markPaid: "Marcar como pago",
     addressLabel: "Endereço",
     cancel: "Cancelar",
     confirm: "Confirmar",
@@ -115,7 +132,7 @@ const DICT = {
     noBookings: "Nenhum agendamento na agenda.",
     servicesTitle: "Serviços e Preços",
     newServiceName: "Nome do serviço",
-    newServicePrice: "Preço (R$)",
+    newServicePrice: "Preço (FCFA)",
     newServiceDuration: "Duração (min)",
     crmTitle: "CRM de Clientes",
     crmSubtitle: "Preferências de corte e alergias",
@@ -201,6 +218,23 @@ const DICT = {
     shopBarbers: "Our team",
     noServicesYet: "No services registered yet.",
     noBarbersOnShop: "No barbers registered yet.",
+    shopDescription: "Shop description",
+    shopPhone: "Shop phone",
+    whatsappContact: "Contact on WhatsApp",
+    paymentOptions: "Payment options",
+    cashPayment: "Cash payment",
+    mobileMoneyPayment: "Mobile-money payment",
+    phoneHint: "Use the format +245 955 1234",
+    offlineMessage: "You are offline. Some features may be unavailable.",
+    connectionError: "Could not connect. Check your internet connection and try again.",
+    paymentMethod: "Payment method",
+    paymentCash: "Cash",
+    paymentMobileMoney: "Mobile money",
+    selectPayment: "Choose payment",
+    paymentPending: "Payment pending",
+    paymentPaid: "Paid",
+    paymentNotApplicable: "Pay at shop",
+    markPaid: "Mark as paid",
     barberCount: "barbers",
     addressLabel: "Address",
     cancel: "Cancel",
@@ -234,7 +268,7 @@ const DICT = {
     noBookings: "No appointments on the schedule.",
     servicesTitle: "Services & Prices",
     newServiceName: "Service name",
-    newServicePrice: "Price ($)",
+    newServicePrice: "Price (FCFA)",
     newServiceDuration: "Duration (min)",
     crmTitle: "Client CRM",
     crmSubtitle: "Haircut preferences and allergies",
@@ -320,6 +354,23 @@ const DICT = {
     shopBarbers: "Notre équipe",
     noServicesYet: "Aucun service enregistré.",
     noBarbersOnShop: "Aucun barbier enregistré.",
+    shopDescription: "Description du salon",
+    shopPhone: "Téléphone du salon",
+    whatsappContact: "Contacter sur WhatsApp",
+    paymentOptions: "Options de paiement",
+    cashPayment: "Paiement en espèces",
+    mobileMoneyPayment: "Paiement mobile",
+    phoneHint: "Utilisez le format +245 955 1234",
+    offlineMessage: "Vous êtes hors ligne. Certaines fonctions peuvent être indisponibles.",
+    connectionError: "Connexion impossible. Vérifiez internet et réessayez.",
+    paymentMethod: "Mode de paiement",
+    paymentCash: "Espèces",
+    paymentMobileMoney: "Paiement mobile",
+    selectPayment: "Choisir le paiement",
+    paymentPending: "Paiement en attente",
+    paymentPaid: "Payé",
+    paymentNotApplicable: "Paiement au salon",
+    markPaid: "Marquer comme payé",
     addressLabel: "Adresse",
     cancel: "Annuler",
     confirm: "Confirmer",
@@ -352,7 +403,7 @@ const DICT = {
     noBookings: "Aucun rendez-vous à l'agenda.",
     servicesTitle: "Services et Prix",
     newServiceName: "Nom du service",
-    newServicePrice: "Prix (R$)",
+    newServicePrice: "Prix (FCFA)",
     newServiceDuration: "Durée (min)",
     crmTitle: "CRM Clients",
     crmSubtitle: "Préférences de coupe et allergies",
@@ -478,7 +529,9 @@ function showToast(msg) {
   render();
   setTimeout(() => { state.toast = null; renderToastOnly(); }, 2600);
 }
-function money(n) { return 'R$ ' + Number(n || 0).toFixed(2).replace('.', ','); }
+function money(n) { return Number(n || 0).toLocaleString('fr-FR') + ' FCFA'; }
+function isValidGuineaBissauPhone(value) { return !value || /^\+245\s?\d{7}$/.test(value); }
+function connectionErrorMessage(error) { return navigator.onLine ? (error?.message || t('genericError')) : t('connectionError'); }
 function statusBadge(status) {
   const map = {
     scheduled: { text: t('statusScheduled'), cls: 'bg-blue-500/15 text-blue-400 border-blue-500/30' },
@@ -487,6 +540,9 @@ function statusBadge(status) {
   };
   const m = map[status];
   return `<span class="text-xs font-medium px-2.5 py-1 rounded-full border ${m.cls}">${m.text}</span>`;
+}
+function paymentStatusLabel(status) {
+  return status === 'paid' ? t('paymentPaid') : status === 'pending' ? t('paymentPending') : t('paymentNotApplicable');
 }
 function renderTimeOptionsBase(taken) {
   return `<option value="">${t('selectOption')}</option>` +
@@ -592,6 +648,7 @@ function render() {
   const app = document.getElementById('app');
   app.innerHTML = `
     ${renderHeader()}
+    ${!navigator.onLine ? `<div class="bg-amber-500/10 border-b border-amber-500/30 text-amber-300 px-4 py-2 text-center text-xs"><i class="fa-solid fa-wifi mr-2"></i>${t('offlineMessage')}</div>` : ''}
     <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
       ${state.view === 'client' ? (state.shopPageShopId ? renderShopPage() : renderClientView()) : renderDashboardView()}
     </main>
@@ -836,6 +893,16 @@ function renderShopPage() {
           <span class="bg-slate-800 rounded-lg px-3 py-2"><i class="fa-solid fa-user-tie text-gold mr-2"></i>${shop.barber_count || pageData.barbers.length} ${t('barberCount')}</span>
           <span class="bg-slate-800 rounded-lg px-3 py-2"><i class="fa-solid fa-tags text-gold mr-2"></i>${pageData.services.length} ${t('shopServices').toLowerCase()}</span>
         </div>
+        ${shop.description ? `<p class="text-sm text-slate-300 mt-5 max-w-2xl">${shop.description}</p>` : ''}
+        <div class="flex flex-wrap gap-3 mt-5">
+          ${shop.whatsapp ? `<a href="https://wa.me/${shop.whatsapp.replace(/\D/g, '')}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 bg-green-500/15 border border-green-500/30 text-green-400 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-green-500/25 transition"><i class="fa-brands fa-whatsapp text-lg"></i>${t('whatsappContact')}</a>` : ''}
+          ${shop.phone ? `<span class="inline-flex items-center gap-2 bg-slate-800 text-slate-300 px-4 py-2.5 rounded-xl text-sm"><i class="fa-solid fa-phone text-gold"></i>${shop.phone}</span>` : ''}
+        </div>
+        <div class="mt-5 flex flex-wrap gap-2 text-xs text-slate-300">
+          <span class="text-slate-400 mr-1">${t('paymentOptions')}:</span>
+          ${shop.accepts_cash ? `<span class="bg-slate-800 rounded-lg px-2.5 py-1.5"><i class="fa-solid fa-money-bill-wave text-gold mr-1"></i>${t('cashPayment')}</span>` : ''}
+          ${shop.accepts_mobile_money ? `<span class="bg-slate-800 rounded-lg px-2.5 py-1.5"><i class="fa-solid fa-mobile-screen-button text-gold mr-1"></i>${t('mobileMoneyPayment')}</span>` : ''}
+        </div>
       </div>
     </div>
     <div class="grid gap-8 lg:grid-cols-2">
@@ -888,7 +955,15 @@ function renderBookingModal() {
         </div>
         <div>
           <label class="text-xs text-slate-400 block mb-1">${t('phoneLabel')}</label>
-          <input id="bkPhone" type="text" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" placeholder="${t('phoneLabel')}" />
+          <input id="bkPhone" type="tel" pattern="\\+245\\s?\\d{7}" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" placeholder="${t('phoneHint')}" />
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">${t('paymentMethod')}</label>
+          <select id="bkPayment" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold">
+            <option value="">${t('selectPayment')}</option>
+            ${shop.accepts_cash !== false ? `<option value="cash">${t('paymentCash')}</option>` : ''}
+            ${shop.accepts_mobile_money ? `<option value="mobile_money">${t('paymentMobileMoney')}</option>` : ''}
+          </select>
         </div>
         <div>
           <label class="text-xs text-slate-400 block mb-1">${t('serviceLabel')} *</label>
@@ -1064,7 +1139,7 @@ function renderDashboardView() {
                 <td class="py-3 pr-3 text-slate-300">${svc ? svc.name : '-'}</td>
                 <td class="py-3 pr-3 text-slate-300">${brb ? brb.name : '-'}</td>
                 <td class="py-3 pr-3 text-gold font-semibold">${a.appt_date} · ${a.appt_time}</td>
-                <td class="py-3 pr-3">${statusBadge(a.status)}</td>
+                <td class="py-3 pr-3"><div>${statusBadge(a.status)}</div><p class="text-[11px] text-slate-500 mt-1">${a.payment_method === 'mobile_money' ? t('paymentMobileMoney') : t('paymentCash')} · ${paymentStatusLabel(a.payment_status)}</p>${a.payment_status === 'pending' ? `<button data-action="mark-payment-paid" data-id="${a.id}" class="text-[11px] text-gold hover:underline mt-1">${t('markPaid')}</button>` : ''}</td>
                 <td class="py-3 pr-3">
                   <div class="flex justify-end gap-2">
                     ${a.status === 'scheduled' ? `
@@ -1202,6 +1277,14 @@ function renderShopEditModal() {
           <input id="editShopAddress" type="text" required value="${shop.address || ''}" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" />
         </div>
         <div>
+          <label class="text-xs text-slate-400 block mb-1">${t('shopDescription')}</label>
+          <textarea id="editShopDescription" rows="3" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold">${shop.description || ''}</textarea>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label class="text-xs text-slate-400 block mb-1">${t('shopPhone')}<input id="editShopPhone" type="tel" pattern="\\+245\\s?\\d{7}" value="${shop.phone || ''}" placeholder="${t('phoneHint')}" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" /></label>
+          <label class="text-xs text-slate-400 block mb-1">WhatsApp<input id="editShopWhatsapp" type="tel" pattern="\\+245\\s?\\d{7}" value="${shop.whatsapp || ''}" placeholder="${t('phoneHint')}" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" /></label>
+        </div>
+        <div>
           <p class="text-xs text-slate-400 block mb-2">${t('openingHours')}</p>
           <div class="grid grid-cols-2 gap-3">
             <label class="text-xs text-slate-500">${t('openingTime')}<input id="editOpeningTime" type="time" value="${shop.opening_time || ''}" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-gold" /></label>
@@ -1218,6 +1301,13 @@ function renderShopEditModal() {
           <span class="text-sm text-slate-300"><i class="fa-solid fa-store text-gold mr-2"></i>${t('shopStatus')}</span>
           <input id="editShopIsOpen" type="checkbox" ${shop.is_open !== false ? 'checked' : ''} class="h-5 w-5 accent-gold" />
         </label>
+        <fieldset>
+          <legend class="text-xs text-slate-400 block mb-2">${t('paymentOptions')}</legend>
+          <div class="space-y-2">
+            <label class="flex items-center gap-2 bg-slate-800/70 rounded-lg px-3 py-2 text-sm text-slate-300"><input id="editAcceptsCash" type="checkbox" ${shop.accepts_cash !== false ? 'checked' : ''} class="h-4 w-4 accent-gold" />${t('cashPayment')}</label>
+            <label class="flex items-center gap-2 bg-slate-800/70 rounded-lg px-3 py-2 text-sm text-slate-300"><input id="editAcceptsMobileMoney" type="checkbox" ${shop.accepts_mobile_money ? 'checked' : ''} class="h-4 w-4 accent-gold" />${t('mobileMoneyPayment')}</label>
+          </div>
+        </fieldset>
         <div>
           <label class="text-xs text-slate-400 block mb-1">${t('shopImageLabel')}</label>
           ${shop.image ? `<img src="${shop.image}" alt="${shop.name}" class="w-full h-32 object-cover rounded-lg mb-2" />` : ''}
@@ -1365,11 +1455,15 @@ function attachHandlers() {
 
   app.querySelectorAll('[data-action="owner-complete-appointment"]').forEach(el =>
     el.addEventListener('click', () => handleOwnerCompleteAppointment(el.dataset.id)));
+
+  app.querySelectorAll('[data-action="mark-payment-paid"]').forEach(el =>
+    el.addEventListener('click', () => handleMarkPaymentPaid(el.dataset.id)));
 }
 
 async function handleBookingSubmit(shopId) {
   const name = document.getElementById('bkName').value.trim();
   const phone = document.getElementById('bkPhone').value.trim();
+  const paymentMethod = document.getElementById('bkPayment').value;
   const serviceId = document.getElementById('bkService').value;
   const barberId = document.getElementById('bkBarber').value;
   const date = document.getElementById('bkDate').value;
@@ -1379,6 +1473,14 @@ async function handleBookingSubmit(shopId) {
     showToast(t('fillFields'));
     return;
   }
+  if (!isValidGuineaBissauPhone(phone)) {
+    showToast(t('phoneHint'));
+    return;
+  }
+  if (!paymentMethod) {
+    showToast(t('selectPayment'));
+    return;
+  }
 
   const { data, error } = await sb.rpc('book_appointment', {
     p_shop_id: shopId, p_service_id: serviceId, p_barber_id: barberId,
@@ -1386,7 +1488,7 @@ async function handleBookingSubmit(shopId) {
   });
 
   if (error) {
-    showToast((error.message || '').includes('SLOT_TAKEN') ? t('slotTaken') : t('genericError'));
+    showToast((error.message || '').includes('SLOT_TAKEN') ? t('slotTaken') : connectionErrorMessage(error));
     return;
   }
 
@@ -1394,6 +1496,7 @@ async function handleBookingSubmit(shopId) {
   const refs = getMyApptRefs();
   refs.push({ id: row.id, token: row.client_token });
   saveMyApptRefs(refs);
+  await sb.rpc('set_appointment_payment', { p_id: row.id, p_token: row.client_token, p_method: paymentMethod });
 
   state.bookingCtx = null;
   showToast(t('toastBooked'));
@@ -1418,6 +1521,12 @@ async function handleOwnerCompleteAppointment(id) {
   const { error } = await sb.from('appointments').update({ status: 'completed' }).eq('id', id);
   if (error) { showToast(t('genericError')); return; }
   showToast(t('toastCompleted'));
+  loadDashboardData();
+}
+
+async function handleMarkPaymentPaid(id) {
+  const { error } = await sb.from('appointments').update({ payment_status: 'paid' }).eq('id', id).eq('shop_id', state.myShop.id);
+  if (error) { showToast(connectionErrorMessage(error)); return; }
   loadDashboardData();
 }
 
@@ -1468,13 +1577,20 @@ async function handleSaveCrm() {
 async function handleSaveShop() {
   const name = document.getElementById('editShopName').value.trim();
   const address = document.getElementById('editShopAddress').value.trim();
+  const description = document.getElementById('editShopDescription').value.trim();
+  const phone = document.getElementById('editShopPhone').value.trim();
+  const whatsapp = document.getElementById('editShopWhatsapp').value.trim();
   const openingTime = document.getElementById('editOpeningTime').value || null;
   const closingTime = document.getElementById('editClosingTime').value || null;
   const openDays = Array.from(document.querySelectorAll('input[name="openDays"]:checked')).map(input => input.value);
   const isOpen = document.getElementById('editShopIsOpen').checked;
+  const acceptsCash = document.getElementById('editAcceptsCash').checked;
+  const acceptsMobileMoney = document.getElementById('editAcceptsMobileMoney').checked;
   const imageFile = document.getElementById('editShopImage').files[0];
   if (!name || !address) { state.shopEditError = t('fillFields'); render(); return; }
+  if (!isValidGuineaBissauPhone(phone) || !isValidGuineaBissauPhone(whatsapp)) { state.shopEditError = t('phoneHint'); render(); return; }
   if (openDays.length === 0) { state.shopEditError = t('openDays'); render(); return; }
+  if (!acceptsCash && !acceptsMobileMoney) { state.shopEditError = t('paymentOptions'); render(); return; }
   if (openingTime && closingTime && openingTime >= closingTime) { state.shopEditError = `${t('openingTime')} < ${t('closingTime')}`; render(); return; }
   if (imageFile && (!imageFile.type.startsWith('image/') || imageFile.size > 5 * 1024 * 1024)) {
     state.shopEditError = t('shopImageHint'); render(); return;
@@ -1490,9 +1606,9 @@ async function handleSaveShop() {
     image = sb.storage.from('shop-images').getPublicUrl(path).data.publicUrl;
   }
 
-  const { data, error } = await sb.from('shops').update({ name, address, image, opening_time: openingTime, closing_time: closingTime, open_days: openDays, is_open: isOpen }).eq('id', state.myShop.id).eq('owner_id', state.session.user.id).select().single();
+  const { data, error } = await sb.from('shops').update({ name, address, description, phone, whatsapp, image, opening_time: openingTime, closing_time: closingTime, open_days: openDays, is_open: isOpen, accepts_cash: acceptsCash, accepts_mobile_money: acceptsMobileMoney }).eq('id', state.myShop.id).eq('owner_id', state.session.user.id).select().single();
   state.shopSaving = false;
-  if (error) { state.shopEditError = error.message; render(); return; }
+  if (error) { state.shopEditError = connectionErrorMessage(error); render(); return; }
   state.myShop = data;
   state.shopEditing = false;
   render();
@@ -1558,6 +1674,8 @@ document.addEventListener('keydown', (e) => {
   else if (state.shopPageShopId) { state.shopPageShopId = null; state.shopPageData = null; render(); }
   else if (state.bookingCtx) { state.bookingCtx = null; render(); }
 });
+window.addEventListener('online', render);
+window.addEventListener('offline', render);
 
 (async function init() {
   const { data } = await sb.auth.getSession();
