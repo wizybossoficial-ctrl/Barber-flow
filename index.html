@@ -164,6 +164,9 @@ const DICT = {
     openingTime: "Abertura",
     closingTime: "Fechamento",
     hoursNotSet: "Horário não informado",
+    shopOpen: "Aberta",
+    shopClosed: "Fechada",
+    shopStatus: "Estado da barbearia",
     openDays: "Dias de funcionamento",
     day_monday: "Segunda-feira",
     day_tuesday: "Terça-feira",
@@ -280,6 +283,9 @@ const DICT = {
     openingTime: "Opening",
     closingTime: "Closing",
     hoursNotSet: "Hours not set",
+    shopOpen: "Open",
+    shopClosed: "Closed",
+    shopStatus: "Shop status",
     openDays: "Open days",
     day_monday: "Monday",
     day_tuesday: "Tuesday",
@@ -395,6 +401,9 @@ const DICT = {
     openingTime: "Ouverture",
     closingTime: "Fermeture",
     hoursNotSet: "Horaires non renseignés",
+    shopOpen: "Ouvert",
+    shopClosed: "Fermé",
+    shopStatus: "État du salon",
     openDays: "Jours d'ouverture",
     day_monday: "Lundi",
     day_tuesday: "Mardi",
@@ -773,6 +782,7 @@ function renderClientView() {
                   <i class="fa-solid fa-star"></i> ${shop.rating}
                 </div>
               </div>
+              <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${shop.is_open !== false ? 'bg-green-500/15 text-green-400 border-green-500/30' : 'bg-red-500/15 text-red-400 border-red-500/30'}"><i class="fa-solid fa-circle text-[7px]"></i>${shop.is_open !== false ? t('shopOpen') : t('shopClosed')}</span>
               <p class="text-xs text-slate-400 mb-1"><i class="fa-solid fa-user-tie mr-1 text-gold"></i>${shop.barber_count || 0} ${t('barberCount')}</p>
               <p class="text-xs text-slate-400 mb-4"><i class="fa-solid fa-location-dot mr-1 text-gold"></i>${shop.address}</p>
               <div class="grid grid-cols-2 gap-2">
@@ -813,6 +823,7 @@ function renderShopPage() {
         <div class="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h2 class="font-heading text-2xl sm:text-3xl font-extrabold mb-2">${shop.name}</h2>
+            <span class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${shop.is_open !== false ? 'bg-green-500/15 text-green-400 border-green-500/30' : 'bg-red-500/15 text-red-400 border-red-500/30'}"><i class="fa-solid fa-circle text-[7px]"></i>${shop.is_open !== false ? t('shopOpen') : t('shopClosed')}</span>
             <p class="text-sm text-slate-400"><i class="fa-solid fa-location-dot mr-2 text-gold"></i>${shop.address}</p>
               <p class="text-sm text-slate-400 mt-2"><i class="fa-regular fa-clock mr-2 text-gold"></i>${shop.opening_time && shop.closing_time ? `${shop.opening_time.slice(0, 5)} - ${shop.closing_time.slice(0, 5)}` : t('hoursNotSet')}</p>
               <p class="text-sm text-slate-400 mt-2"><i class="fa-regular fa-calendar mr-2 text-gold"></i>${(shop.open_days || OPEN_DAYS).map(day => t(`day_${day}`)).join(', ')}</p>
@@ -1201,6 +1212,10 @@ function renderShopEditModal() {
             ${OPEN_DAYS.map(day => `<label class="flex items-center gap-2 bg-slate-800/70 rounded-lg px-3 py-2 text-sm text-slate-300"><input type="checkbox" name="openDays" value="${day}" ${(shop.open_days || OPEN_DAYS).includes(day) ? 'checked' : ''} class="accent-gold" />${t(`day_${day}`)}</label>`).join('')}
           </div>
         </fieldset>
+        <label class="flex items-center justify-between gap-3 bg-slate-800/70 rounded-lg px-3 py-3 cursor-pointer">
+          <span class="text-sm text-slate-300"><i class="fa-solid fa-store text-gold mr-2"></i>${t('shopStatus')}</span>
+          <input id="editShopIsOpen" type="checkbox" ${shop.is_open !== false ? 'checked' : ''} class="h-5 w-5 accent-gold" />
+        </label>
         <div>
           <label class="text-xs text-slate-400 block mb-1">${t('shopImageLabel')}</label>
           ${shop.image ? `<img src="${shop.image}" alt="${shop.name}" class="w-full h-32 object-cover rounded-lg mb-2" />` : ''}
@@ -1454,6 +1469,7 @@ async function handleSaveShop() {
   const openingTime = document.getElementById('editOpeningTime').value || null;
   const closingTime = document.getElementById('editClosingTime').value || null;
   const openDays = Array.from(document.querySelectorAll('input[name="openDays"]:checked')).map(input => input.value);
+  const isOpen = document.getElementById('editShopIsOpen').checked;
   const imageFile = document.getElementById('editShopImage').files[0];
   if (!name || !address) { state.shopEditError = t('fillFields'); render(); return; }
   if (openDays.length === 0) { state.shopEditError = t('openDays'); render(); return; }
@@ -1472,7 +1488,7 @@ async function handleSaveShop() {
     image = sb.storage.from('shop-images').getPublicUrl(path).data.publicUrl;
   }
 
-  const { data, error } = await sb.from('shops').update({ name, address, image, opening_time: openingTime, closing_time: closingTime, open_days: openDays }).eq('id', state.myShop.id).eq('owner_id', state.session.user.id).select().single();
+  const { data, error } = await sb.from('shops').update({ name, address, image, opening_time: openingTime, closing_time: closingTime, open_days: openDays, is_open: isOpen }).eq('id', state.myShop.id).eq('owner_id', state.session.user.id).select().single();
   state.shopSaving = false;
   if (error) { state.shopEditError = error.message; render(); return; }
   state.myShop = data;
