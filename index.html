@@ -90,7 +90,7 @@ const DICT = {
     paymentOptions: "Opções de pagamento",
     cashPayment: "Pagamento em dinheiro",
     mobileMoneyPayment: "Pagamento móvel",
-    phoneHint: "Use o formato +245 955 1234",
+    phoneHint: "Use o formato +245 95 123 4567",
     offlineMessage: "Você está offline. Algumas funções podem não estar disponíveis.",
     connectionError: "Não foi possível conectar. Verifique a internet e tente novamente.",
     paymentMethod: "Método de pagamento",
@@ -154,6 +154,9 @@ const DICT = {
     searchPlaceholder: "Buscar barbearia por nome ou endereço...",
     noResults: "Nenhuma barbearia encontrada.",
     slotTaken: "Esse horário já está reservado para este barbeiro. Escolha outro.",
+    shopClosedOnDate: "Esta barbearia não funciona na data escolhida. Escolha um dia da semana.",
+    bookingDataUnavailable: "Os dados do agendamento expiraram. Feche e abra o formulário novamente.",
+    bookingServerError: "Não foi possível concluir o agendamento no servidor. Tente outro horário.",
     confirmCancelTitle: "Cancelar agendamento?",
     confirmCancelMsg: "Essa ação não pode ser desfeita.",
     confirmRemoveServiceTitle: "Remover serviço?",
@@ -226,7 +229,7 @@ const DICT = {
     paymentOptions: "Payment options",
     cashPayment: "Cash payment",
     mobileMoneyPayment: "Mobile-money payment",
-    phoneHint: "Use the format +245 955 1234",
+    phoneHint: "Use the format +245 95 123 4567",
     offlineMessage: "You are offline. Some features may be unavailable.",
     connectionError: "Could not connect. Check your internet connection and try again.",
     paymentMethod: "Payment method",
@@ -291,6 +294,9 @@ const DICT = {
     searchPlaceholder: "Search barbershop by name or address...",
     noResults: "No barbershops found.",
     slotTaken: "This time slot is already booked for this barber. Please choose another.",
+    shopClosedOnDate: "This barbershop is closed on the selected date. Choose a weekday.",
+    bookingDataUnavailable: "The booking details expired. Close and reopen the form.",
+    bookingServerError: "The server could not complete this booking. Try another time.",
     confirmCancelTitle: "Cancel appointment?",
     confirmCancelMsg: "This action cannot be undone.",
     confirmRemoveServiceTitle: "Remove service?",
@@ -363,7 +369,7 @@ const DICT = {
     paymentOptions: "Options de paiement",
     cashPayment: "Paiement en espèces",
     mobileMoneyPayment: "Paiement mobile",
-    phoneHint: "Utilisez le format +245 955 1234",
+    phoneHint: "Utilisez le format +245 95 123 4567",
     offlineMessage: "Vous êtes hors ligne. Certaines fonctions peuvent être indisponibles.",
     connectionError: "Connexion impossible. Vérifiez internet et réessayez.",
     paymentMethod: "Mode de paiement",
@@ -427,6 +433,9 @@ const DICT = {
     searchPlaceholder: "Rechercher un salon par nom ou adresse...",
     noResults: "Aucun salon trouvé.",
     slotTaken: "Ce créneau est déjà réservé pour ce barbier. Veuillez en choisir un autre.",
+    shopClosedOnDate: "Ce salon est fermé à la date choisie. Choisissez un jour de semaine.",
+    bookingDataUnavailable: "Les données de réservation ont expiré. Fermez puis rouvrez le formulaire.",
+    bookingServerError: "Le serveur n'a pas pu confirmer ce rendez-vous. Essayez un autre horaire.",
     confirmCancelTitle: "Annuler le rendez-vous ?",
     confirmCancelMsg: "Cette action est irréversible.",
     confirmRemoveServiceTitle: "Supprimer le service ?",
@@ -543,7 +552,7 @@ function escapeHTML(value) {
   }[character]));
 }
 function money(n) { return Number(n || 0).toLocaleString('fr-FR') + ' FCFA'; }
-function isValidGuineaBissauPhone(value) { return !value || /^\+245\s?\d{7}$/.test(value); }
+function isValidGuineaBissauPhone(value) { return !value || /^\+245(?:\s?\d){9}$/.test(value); }
 function connectionErrorMessage(error) { return navigator.onLine ? (error?.message || t('genericError')) : t('connectionError'); }
 function dayKeyFromDate(date) {
   return OPEN_DAYS[new Date(`${date}T00:00:00`).getDay() === 0 ? 6 : new Date(`${date}T00:00:00`).getDay() - 1];
@@ -976,7 +985,7 @@ function renderBookingModal() {
         </div>
         <div>
           <label class="text-xs text-slate-400 block mb-1">${t('phoneLabel')}</label>
-          <input id="bkPhone" type="tel" pattern="\\+245\\s?\\d{7}" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" placeholder="${t('phoneHint')}" />
+          <input id="bkPhone" type="tel" pattern="\\+245(?:\\s?\\d){9}" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" placeholder="${t('phoneHint')}" />
         </div>
         <div>
           <label class="text-xs text-slate-400 block mb-1">${t('paymentMethod')}</label>
@@ -1095,6 +1104,10 @@ function renderDashboardView() {
 
   const shop = state.myShop;
   const { services, barbers, appointments, clients } = state.dashboard;
+  const cutoffDate = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
+  const cutoffStr = `${cutoffDate.getFullYear()}-${String(cutoffDate.getMonth() + 1).padStart(2, '0')}-${String(cutoffDate.getDate()).padStart(2, '0')}`;
+  // Completed/cancelled appointments older than 5 days are hidden from the schedule but kept for CRM stats
+  const scheduleAppts = appointments.filter(a => !((a.status === 'completed' || a.status === 'cancelled') && a.appt_date < cutoffStr));
   const todayAppts = appointments.filter(a => a.appt_date === todayStr && a.status !== 'cancelled');
   const revenue = todayAppts.reduce((sum, a) => {
     const svc = services.find(s => s.id === a.service_id);
@@ -1152,7 +1165,7 @@ function renderDashboardView() {
             </tr>
           </thead>
           <tbody>
-            ${appointments.length === 0 ? `<tr><td colspan="6" class="py-6 text-center text-slate-500">${t('noBookings')}</td></tr>` : appointments.map(a => {
+            ${scheduleAppts.length === 0 ? `<tr><td colspan="6" class="py-6 text-center text-slate-500">${t('noBookings')}</td></tr>` : scheduleAppts.map(a => {
               const svc = services.find(s => s.id === a.service_id); const brb = barbers.find(b => b.id === a.barber_id);
               return `
               <tr class="border-b border-slate-800/60 hover:bg-slate-800/30">
@@ -1302,8 +1315,8 @@ function renderShopEditModal() {
           <textarea id="editShopDescription" rows="3" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold">${escapeHTML(shop.description || '')}</textarea>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <label class="text-xs text-slate-400 block mb-1">${t('shopPhone')}<input id="editShopPhone" type="tel" pattern="\\+245\\s?\\d{7}" value="${escapeHTML(shop.phone || '')}" placeholder="${t('phoneHint')}" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" /></label>
-          <label class="text-xs text-slate-400 block mb-1">WhatsApp<input id="editShopWhatsapp" type="tel" pattern="\\+245\\s?\\d{7}" value="${escapeHTML(shop.whatsapp || '')}" placeholder="${t('phoneHint')}" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" /></label>
+          <label class="text-xs text-slate-400 block mb-1">${t('shopPhone')}<input id="editShopPhone" type="tel" pattern="\\+245(?:\\s?\\d){9}" value="${escapeHTML(shop.phone || '')}" placeholder="${t('phoneHint')}" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" /></label>
+          <label class="text-xs text-slate-400 block mb-1">WhatsApp<input id="editShopWhatsapp" type="tel" pattern="\\+245(?:\\s?\\d){9}" value="${escapeHTML(shop.whatsapp || '')}" placeholder="${t('phoneHint')}" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" /></label>
         </div>
         <div>
           <p class="text-xs text-slate-400 block mb-2">${t('openingHours')}</p>
@@ -1500,7 +1513,7 @@ async function handleBookingSubmit(shopId) {
     return;
   }
   if (!state.bookingCtx || !state.bookingCtx.services.some(service => service.id === serviceId) || !state.bookingCtx.barbers.some(barber => barber.id === barberId)) {
-    showToast(t('genericError'));
+    showToast(t('bookingDataUnavailable'));
     return;
   }
   if (date < todayStr || !TIME_SLOTS.includes(time)) {
@@ -1508,7 +1521,7 @@ async function handleBookingSubmit(shopId) {
     return;
   }
   if (!(shop.open_days || OPEN_DAYS).includes(dayKeyFromDate(date))) {
-    showToast(t('genericError'));
+    showToast(t('shopClosedOnDate'));
     return;
   }
   if (!isValidGuineaBissauPhone(phone)) {
@@ -1526,7 +1539,7 @@ async function handleBookingSubmit(shopId) {
   });
 
   if (error) {
-    showToast((error.message || '').includes('SLOT_TAKEN') ? t('slotTaken') : connectionErrorMessage(error));
+    showToast((error.message || '').includes('SLOT_TAKEN') ? t('slotTaken') : (error.message || (navigator.onLine ? t('bookingServerError') : t('connectionError'))));
     return;
   }
 
@@ -1537,7 +1550,7 @@ async function handleBookingSubmit(shopId) {
   const paymentResult = await sb.rpc('set_appointment_payment', { p_id: row.id, p_token: row.client_token, p_method: paymentMethod });
   if (paymentResult.error) {
     await sb.rpc('cancel_my_appointment', { p_id: row.id, p_token: row.client_token });
-    showToast(connectionErrorMessage(paymentResult.error));
+    showToast(paymentResult.error.message || (navigator.onLine ? t('bookingServerError') : t('connectionError')));
     return;
   }
 
