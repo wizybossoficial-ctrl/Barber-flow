@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">foco barbearia</string>
+    <string name="title_activity_main">foco barbearia</string>
+    <string name="package_name">com.barbearia.foco</string>
+    <string name="custom_url_scheme">com.barbearia.foco</string>
+</resources>
