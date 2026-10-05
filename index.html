@@ -148,6 +148,9 @@ const DICT = {
     toastServiceAdded: "Serviço adicionado.",
     toastServiceRemoved: "Serviço removido.",
     toastCrmSaved: "Notas do cliente salvas.",
+    toastCrmDeleted: "Cliente removido do CRM.",
+    confirmRemoveClientTitle: "Remover cliente?",
+    confirmRemoveClientMsg: "Este cliente e suas notas serão removidos do CRM permanentemente.",
     fillFields: "Preencha todos os campos obrigatórios.",
     yourShop: "Sua Barbearia",
     exploreShops: "Barbearias Parceiras",
@@ -288,6 +291,9 @@ const DICT = {
     toastServiceAdded: "Service added.",
     toastServiceRemoved: "Service removed.",
     toastCrmSaved: "Client notes saved.",
+    toastCrmDeleted: "Client removed from CRM.",
+    confirmRemoveClientTitle: "Remove client?",
+    confirmRemoveClientMsg: "This client and their notes will be permanently removed from the CRM.",
     fillFields: "Please fill in all required fields.",
     yourShop: "Your Shop",
     exploreShops: "Partner Barbershops",
@@ -427,6 +433,9 @@ const DICT = {
     toastServiceAdded: "Service ajouté.",
     toastServiceRemoved: "Service supprimé.",
     toastCrmSaved: "Notes du client enregistrées.",
+    toastCrmDeleted: "Client supprimé du CRM.",
+    confirmRemoveClientTitle: "Supprimer le client ?",
+    confirmRemoveClientMsg: "Ce client et ses notes seront définitivement supprimés du CRM.",
     fillFields: "Veuillez remplir tous les champs obligatoires.",
     yourShop: "Votre Salon",
     exploreShops: "Salons Partenaires",
@@ -1247,7 +1256,10 @@ function renderDashboardView() {
             <div class="bg-slate-800/60 rounded-lg p-3">
               <div class="flex items-start justify-between mb-1">
                 <p class="text-sm font-semibold">${escapeHTML(c.name)}</p>
-                <button data-action="edit-crm" data-id="${c.id}" class="text-xs text-gold hover:underline"><i class="fa-solid fa-pen mr-1"></i>${t('crmEdit')}</button>
+                <div class="flex items-center gap-3">
+                  <button data-action="edit-crm" data-id="${c.id}" class="text-xs text-gold hover:underline"><i class="fa-solid fa-pen mr-1"></i>${t('crmEdit')}</button>
+                  <button data-action="request-remove-client" data-id="${c.id}" aria-label="${t('remove')}" class="text-xs text-red-400 hover:text-red-300"><i class="fa-solid fa-trash"></i></button>
+                </div>
               </div>
               <p class="text-xs text-slate-400 mb-0.5"><i class="fa-solid fa-scissors text-gold mr-1"></i>${t('crmPreferences')}: ${c.preferences || '-'}</p>
               <p class="text-xs text-slate-400 mb-0.5"><i class="fa-solid fa-triangle-exclamation text-gold mr-1"></i>${t('crmAllergies')}: ${c.allergies || '-'}</p>
@@ -1447,6 +1459,12 @@ function attachHandlers() {
       render();
     }));
 
+  app.querySelectorAll('[data-action="request-remove-client"]').forEach(el =>
+    el.addEventListener('click', () => {
+      state.confirmDialog = { title: t('confirmRemoveClientTitle'), message: t('confirmRemoveClientMsg'), onConfirm: 'remove-client', id: el.dataset.id };
+      render();
+    }));
+
   app.querySelectorAll('[data-action="confirm-no"], [data-action="close-confirm-backdrop"]').forEach(el =>
     el.addEventListener('click', () => { state.confirmDialog = null; render(); }));
 
@@ -1459,6 +1477,7 @@ function attachHandlers() {
       if (cd.onConfirm === 'owner-cancel') handleOwnerCancelAppointment(cd.id);
       if (cd.onConfirm === 'remove-service') handleRemoveService(cd.id);
       if (cd.onConfirm === 'remove-barber') handleRemoveBarber(cd.id);
+      if (cd.onConfirm === 'remove-client') handleRemoveClient(cd.id);
     }));
 
   const bkBarberEl = document.getElementById('bkBarber');
@@ -1627,6 +1646,13 @@ async function handleSaveCrm() {
   const { error } = await sb.from('clients').update({ preferences, allergies }).eq('id', client.id);
   if (error) { showToast(t('genericError')); return; }
   showToast(t('toastCrmSaved'));
+  loadDashboardData();
+}
+
+async function handleRemoveClient(id) {
+  const { data, error } = await sb.from('clients').delete().eq('id', id).eq('shop_id', state.myShop.id).select();
+  if (error || !data || data.length === 0) { showToast(t('genericError')); return; }
+  showToast(t('toastCrmDeleted'));
   loadDashboardData();
 }
 
