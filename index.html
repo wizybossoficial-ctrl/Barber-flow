@@ -7,6 +7,7 @@
 <link rel="icon" type="image/jpeg" href="foco-logo.jpg" />
 
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -505,7 +506,9 @@ const SUPABASE_KEY = 'sb_publishable_fSE-7Cgo6DhU1IFD-1Q3fw_klMcfxDp';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const MY_APPTS_KEY = 'goldcut_my_appts_v1';
-function getMyApptRefs() { try { return JSON.parse(localStorage.getItem(MY_APPTS_KEY)) || []; } catch (e) { return []; } }
+function getMyApptRefs() { try { const v = JSON.parse(localStorage.getItem(MY_APPTS_KEY)); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
+function safeGetItem(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+function safeSetItem(key, value) { try { localStorage.setItem(key, value); } catch (e) {} }
 function saveMyApptRefs(list) { try { localStorage.setItem(MY_APPTS_KEY, JSON.stringify(list)); } catch (e) {} }
 
 /* =========================================================
@@ -513,8 +516,28 @@ function saveMyApptRefs(list) { try { localStorage.setItem(MY_APPTS_KEY, JSON.st
 ========================================================= */
 const todayStr = new Date().toISOString().split('T')[0];
 
+const REVIEWS_KEY = 'foco_reviews';
+const SEED_REVIEWS = [
+  { name: 'Carlos M.', service: 'Haircut + Beard', rating: 5, comment: 'Best fade I have ever had. Clean, precise and a very relaxing atmosphere.', ts: 1 },
+  { name: 'André S.', service: 'Classic Haircut', rating: 5, comment: 'Booked in seconds and walked in with zero wait. Highly recommended.', ts: 2 },
+  { name: 'Miguel T.', service: 'Beard Trim', rating: 4, comment: 'Great attention to detail and friendly barbers.', ts: 3 }
+];
+function loadReviews() {
+  try {
+    const raw = safeGetItem(REVIEWS_KEY);
+    if (raw === null) { safeSetItem(REVIEWS_KEY, JSON.stringify(SEED_REVIEWS)); return SEED_REVIEWS.slice(); }
+    const list = JSON.parse(raw);
+    return Array.isArray(list)
+      ? list.filter(r => r && typeof r === 'object' && Number.isInteger(r.rating) && r.rating >= 1 && r.rating <= 5)
+      : [];
+  } catch (e) { return SEED_REVIEWS.slice(); }
+}
+function saveReviews() {
+  safeSetItem(REVIEWS_KEY, JSON.stringify(state.reviews));
+}
+
 const state = {
-  lang: localStorage.getItem('goldcut_lang') || 'pt',
+  lang: safeGetItem('goldcut_lang') || 'pt',
   view: 'client', // 'client' | 'dashboard'
   bookingCtx: null, // { shopId, services, barbers }
   crmEditingId: null,
@@ -523,6 +546,9 @@ const state = {
   shopEditing: false,
   shopEditError: '',
   shopSaving: false,
+  receipt: null, // { id, name, service, barber, date, time, shop }
+  reviews: loadReviews(),
+  reviewModal: false,
   confirmDialog: null, // { title, message, onConfirm, id, token }
   shopSearch: '',
   toast: null,
@@ -696,11 +722,13 @@ function render() {
     ${state.crmEditingId !== null ? renderCrmModal() : ''}
     ${state.shopEditing ? renderShopEditModal() : ''}
     ${state.confirmDialog ? renderConfirmDialog() : ''}
+    ${state.receipt ? renderReceiptModal() : ''}
+    ${state.reviewModal ? renderReviewModal() : ''}
     ${renderToast()}
   `;
   attachHandlers();
   restoreFocus(activeId, selStart, selEnd);
-  localStorage.setItem('goldcut_lang', state.lang);
+  safeSetItem('goldcut_lang', state.lang);
 }
 
 function restoreFocus(activeId, selStart, selEnd) {
@@ -734,6 +762,78 @@ function renderToast() {
         <span class="text-sm font-medium">${escapeHTML(state.toast)}</span>
       </div>
     </div>` : ''}</div>`;
+}
+
+function makeReceiptId(apptId) {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const src = String(apptId || '').replace(/[^a-z0-9]/gi, '').toUpperCase();
+  let out = '';
+  for (let i = 0; i < 4; i++) {
+    const code = src ? src.charCodeAt((i * 7) % src.length) + i * 13 : Math.floor(Math.random() * 1000);
+    out += alphabet[code % alphabet.length];
+  }
+  return 'FOCO-' + out;
+}
+
+function receiptBarcode(seed) {
+  let h = 0, bars = '', x = 0;
+  const str = String(seed);
+  for (let i = 0; i < 46; i++) {
+    h = (h * 31 + str.charCodeAt(i % str.length) + i) >>> 0;
+    const w = 1 + (h % 3);
+    if (i % 2 === 0) bars += `<rect x="${x}" y="0" width="${w}" height="50" fill="#0f172a"/>`;
+    x += w;
+  }
+  return `<svg viewBox="0 0 ${x} 50" preserveAspectRatio="none" class="w-full h-14" xmlns="http://www.w3.org/2000/svg">${bars}</svg>`;
+}
+
+function renderReceiptModal() {
+  const r = state.receipt;
+  if (!r) return '';
+  const gold = '#D4AF37';
+  const row = (label, value) => `
+    <div class="flex justify-between gap-4 py-2 border-b border-dashed" style="border-color:rgba(212,175,55,.25)">
+      <span class="text-[11px] uppercase tracking-widest" style="color:#94a3b8">${label}</span>
+      <span class="text-sm font-semibold text-right" style="color:#f8fafc">${escapeHTML(value)}</span>
+    </div>`;
+  return `
+  <div class="fixed inset-0 modal-backdrop z-[70] flex items-center justify-center p-4 overflow-y-auto" data-action="close-receipt-backdrop">
+    <div class="w-full max-w-sm fade-in my-auto" role="dialog" aria-modal="true" aria-label="Receipt" onclick="event.stopPropagation()">
+      <div id="receiptCard" class="p-5 sm:p-6" style="background:linear-gradient(160deg,#1e293b,#0f172a);border:1px solid ${gold};border-radius:20px;color:#f8fafc;font-family:inherit">
+        <div class="text-center mb-4">
+          <div class="text-[10px] uppercase" style="letter-spacing:.35em;color:${gold}">VIP Receipt</div>
+          <div class="font-heading text-2xl font-bold mt-1" style="color:${gold}">FOCO BARBEARIA</div>
+          ${r.shop ? `<div class="text-xs mt-1" style="color:#94a3b8">${escapeHTML(r.shop)}</div>` : ''}
+        </div>
+        <div class="text-center rounded-xl py-3 mb-3" style="background:rgba(212,175,55,.08);border:1px solid rgba(212,175,55,.3)">
+          <div class="text-[10px] uppercase tracking-widest" style="color:#94a3b8">Appointment ID</div>
+          <div class="font-heading text-2xl font-bold tracking-widest" style="color:${gold}">${escapeHTML(r.id)}</div>
+        </div>
+        ${row('Client', r.name)}${row('Service', r.service)}${row('Barber', r.barber)}${row('Date', r.date)}${row('Time', r.time)}
+        <div class="mt-5 rounded-lg p-3" style="background:#f8fafc">${receiptBarcode(r.id)}
+          <div class="text-center text-[10px] mt-1 tracking-[0.3em]" style="color:#0f172a">${escapeHTML(r.id)}</div>
+        </div>
+        <p class="text-center text-[10px] mt-3" style="color:#64748b">Show this ticket at the barbershop</p>
+      </div>
+      <div class="flex gap-3 mt-4">
+        <button data-action="close-receipt" class="flex-1 py-2.5 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 transition text-sm font-medium">Close</button>
+        <button data-action="download-receipt" class="flex-1 py-2.5 rounded-xl font-semibold text-sm transition hover:brightness-110" style="background:${gold};color:#0f172a"><i class="fa-solid fa-download mr-1.5"></i>Download Receipt</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function downloadReceipt() {
+  const card = document.getElementById('receiptCard');
+  if (!card) return;
+  if (typeof html2canvas !== 'function') { window.print(); return; }
+  try {
+    const canvas = await html2canvas(card, { backgroundColor: '#0f172a', scale: 2 });
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = `${state.receipt.id}.png`;
+    document.body.appendChild(a); a.click(); a.remove();
+  } catch (e) { window.print(); }
 }
 
 function renderConfirmDialog() {
@@ -899,7 +999,97 @@ function renderClientView() {
       </div>
       `}
     </div>
+    ${renderTestimonials()}
   </section>`;
+}
+
+function starsHTML(n, cls = 'text-sm') {
+  return [1, 2, 3, 4, 5].map(i => `<i class="${i <= n ? 'fa-solid' : 'fa-regular'} fa-star ${i <= n ? 'text-gold' : 'text-slate-600'} ${cls}"></i>`).join('');
+}
+
+function renderTestimonials() {
+  const list = state.reviews.slice().sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  const avg = list.length ? list.reduce((s, r) => s + r.rating, 0) / list.length : 0;
+  return `
+  <div class="mt-14" id="testimonials">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-4">
+        <div class="font-heading text-5xl font-extrabold text-gold">${avg.toFixed(1)}<span class="text-xl text-slate-500">/5.0</span></div>
+        <div>
+          <div class="flex gap-0.5">${starsHTML(Math.round(avg), 'text-base')}</div>
+          <p class="text-xs text-slate-400 mt-1">${list.length} reviews</p>
+        </div>
+      </div>
+      <button data-action="open-review" class="gold-gradient text-slate-950 font-semibold text-sm px-5 py-2.5 rounded-xl hover:brightness-110 transition shadow-lg shadow-gold/10">
+        <i class="fa-solid fa-pen mr-1.5"></i>Leave a Review
+      </button>
+    </div>
+    <h3 class="font-heading text-xl font-bold mb-4 flex items-center gap-2"><i class="fa-solid fa-quote-left text-gold"></i> What our clients say</h3>
+    ${list.length === 0 ? `<div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-slate-400 text-sm text-center">No reviews yet. Be the first!</div>` : `
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      ${list.map(r => `
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 card-hover">
+          <div class="flex gap-0.5 mb-3">${starsHTML(r.rating)}</div>
+          <p class="text-sm text-slate-300 mb-4">&ldquo;${escapeHTML(r.comment)}&rdquo;</p>
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-full gold-gradient text-slate-950 font-bold flex items-center justify-center">${escapeHTML((r.name || '?').charAt(0).toUpperCase())}</div>
+            <div>
+              <p class="text-sm font-semibold">${escapeHTML(r.name)}</p>
+              <p class="text-xs text-slate-500">${escapeHTML(r.service)}</p>
+            </div>
+          </div>
+        </div>`).join('')}
+    </div>`}
+  </div>`;
+}
+
+function renderReviewModal() {
+  return `
+  <div class="fixed inset-0 modal-backdrop z-[60] flex items-center justify-center p-4" data-action="close-review-backdrop">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6 fade-in max-h-[90vh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="reviewTitle" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between mb-4">
+        <h3 id="reviewTitle" class="font-heading text-lg font-bold"><i class="fa-solid fa-star text-gold mr-2"></i>Leave a Review</h3>
+        <button type="button" data-action="close-review" aria-label="Close" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="reviewForm" class="space-y-4">
+        <input id="rvName" type="text" maxlength="50" required placeholder="Your name" aria-label="Client name" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gold" />
+        <input id="rvService" type="text" maxlength="60" required list="rvServices" placeholder="Service received" aria-label="Service received" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gold" />
+        <datalist id="rvServices"><option value="Haircut"><option value="Beard Trim"><option value="Haircut + Beard"><option value="Shave"><option value="Kids Cut"></datalist>
+        <div>
+          <div id="rvStars" class="flex gap-1 text-2xl" role="radiogroup" aria-label="Star rating" data-rating="0">
+            ${[1, 2, 3, 4, 5].map(i => `<button type="button" data-star="${i}" role="radio" aria-checked="false" aria-label="${i} stars" class="text-slate-600 hover:text-gold transition"><i class="fa-solid fa-star"></i></button>`).join('')}
+          </div>
+        </div>
+        <textarea id="rvComment" rows="4" maxlength="400" required placeholder="Tell us about your experience" aria-label="Comment" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gold resize-none"></textarea>
+        <button type="submit" class="w-full gold-gradient text-slate-950 font-semibold py-3 rounded-xl hover:brightness-110 transition">Submit Review</button>
+      </form>
+    </div>
+  </div>`;
+}
+
+function setReviewStars(n) {
+  const box = document.getElementById('rvStars');
+  if (!box) return;
+  box.dataset.rating = n;
+  box.querySelectorAll('[data-star]').forEach(b => {
+    const on = Number(b.dataset.star) <= n;
+    b.classList.toggle('text-gold', on);
+    b.classList.toggle('text-slate-600', !on);
+    b.setAttribute('aria-checked', Number(b.dataset.star) === n ? 'true' : 'false');
+  });
+}
+
+function handleReviewSubmit() {
+  const name = document.getElementById('rvName').value.trim();
+  const service = document.getElementById('rvService').value.trim();
+  const comment = document.getElementById('rvComment').value.trim();
+  const rating = Number(document.getElementById('rvStars').dataset.rating);
+  if (!name || !service || !comment || rating < 1) { showToast(rating < 1 ? 'Please select a star rating.' : t('fillFields')); return; }
+  state.reviews.push({ name, service, rating, comment, ts: Date.now() });
+  saveReviews();
+  state.reviewModal = false;
+  render();
+  showToast('Thank you for your review!');
 }
 
 function renderShopPage() {
@@ -1488,6 +1678,20 @@ function attachHandlers() {
     bkDateEl.addEventListener('change', refresh);
   }
 
+  app.querySelectorAll('[data-action="close-receipt"], [data-action="close-receipt-backdrop"]').forEach(el =>
+    el.addEventListener('click', () => { state.receipt = null; render(); }));
+  app.querySelectorAll('[data-action="download-receipt"]').forEach(el =>
+    el.addEventListener('click', downloadReceipt));
+
+  app.querySelectorAll('[data-action="open-review"]').forEach(el =>
+    el.addEventListener('click', () => { state.reviewModal = true; render(); }));
+  app.querySelectorAll('[data-action="close-review"], [data-action="close-review-backdrop"]').forEach(el =>
+    el.addEventListener('click', () => { state.reviewModal = false; render(); }));
+  app.querySelectorAll('#rvStars [data-star]').forEach(el =>
+    el.addEventListener('click', () => setReviewStars(Number(el.dataset.star))));
+  const reviewForm = document.getElementById('reviewForm');
+  if (reviewForm) reviewForm.addEventListener('submit', (e) => { e.preventDefault(); handleReviewSubmit(); });
+
   const bookingForm = document.getElementById('bookingForm');
   if (bookingForm) bookingForm.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -1573,8 +1777,16 @@ async function handleBookingSubmit(shopId) {
     return;
   }
 
+  const bookedService = state.bookingCtx.services.find(s => s.id === serviceId);
+  const bookedBarber = state.bookingCtx.barbers.find(b => b.id === barberId);
+  state.receipt = {
+    id: makeReceiptId(row.id), name, date, time, shop: shop.name || '',
+    service: bookedService ? (bookedService.name || '') : '',
+    barber: bookedBarber ? (bookedBarber.name || '') : ''
+  };
   state.bookingCtx = null;
   showToast(t('toastBooked'));
+  render();
   loadMyAppointments();
 }
 
@@ -1751,6 +1963,8 @@ async function handleCreateShop() {
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   if (state.confirmDialog) { state.confirmDialog = null; render(); }
+  else if (state.reviewModal) { state.reviewModal = false; render(); }
+  else if (state.receipt) { state.receipt = null; render(); }
   else if (state.crmEditingId !== null) { state.crmEditingId = null; render(); }
   else if (state.shopEditing) { state.shopEditing = false; state.shopEditError = ''; render(); }
   else if (state.shopPageShopId) { state.shopPageShopId = null; state.shopPageData = null; render(); }
