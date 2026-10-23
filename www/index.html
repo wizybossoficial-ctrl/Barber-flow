@@ -153,6 +153,20 @@ const DICT = {
     confirmRemoveClientTitle: "Remover cliente?",
     confirmRemoveClientMsg: "Este cliente e suas notas serão removidos do CRM permanentemente.",
     fillFields: "Preencha todos os campos obrigatórios.",
+    reviewsTag: "Avaliações da Barbearia",
+    reviewsHeading: "O Que Dizem Sobre o Nosso Espaço e Barbeiros",
+    reviewsCount: "avaliações",
+    leaveReview: "Deixar Avaliação",
+    noReviews: "Ainda não há avaliações. Seja o primeiro!",
+    reviewNamePh: "O seu nome",
+    reviewServicePh: "Serviço recebido",
+    reviewCommentPh: "Conte-nos como foi a sua experiência na barbearia",
+    reviewServiceOptions: "Corte,Degradê,Barba,Corte + Barba,Corte Infantil",
+    submitReview: "Enviar Avaliação",
+    selectStars: "Selecione uma classificação em estrelas.",
+    thanksReview: "Obrigado pela sua avaliação!",
+    closeLabel: "Fechar",
+    starRatingLabel: "Classificação",
     yourShop: "Sua Barbearia",
     exploreShops: "Barbearias Parceiras",
     searchPlaceholder: "Buscar barbearia por nome ou endereço...",
@@ -296,6 +310,20 @@ const DICT = {
     confirmRemoveClientTitle: "Remove client?",
     confirmRemoveClientMsg: "This client and their notes will be permanently removed from the CRM.",
     fillFields: "Please fill in all required fields.",
+    reviewsTag: "Shop Reviews",
+    reviewsHeading: "What Clients Say About Our Shop & Barbers",
+    reviewsCount: "reviews",
+    leaveReview: "Leave a Review",
+    noReviews: "No reviews yet. Be the first!",
+    reviewNamePh: "Your name",
+    reviewServicePh: "Service received",
+    reviewCommentPh: "Tell us about your experience at the shop",
+    reviewServiceOptions: "Haircut,Fade,Beard Trim,Haircut + Beard,Kids Cut",
+    submitReview: "Submit Review",
+    selectStars: "Please select a star rating.",
+    thanksReview: "Thank you for your review!",
+    closeLabel: "Close",
+    starRatingLabel: "Rating",
     yourShop: "Your Shop",
     exploreShops: "Partner Barbershops",
     searchPlaceholder: "Search barbershop by name or address...",
@@ -438,6 +466,20 @@ const DICT = {
     confirmRemoveClientTitle: "Supprimer le client ?",
     confirmRemoveClientMsg: "Ce client et ses notes seront définitivement supprimés du CRM.",
     fillFields: "Veuillez remplir tous les champs obligatoires.",
+    reviewsTag: "Avis sur le Salon",
+    reviewsHeading: "Ce Que Disent Nos Clients Sur Le Salon & Nos Barbiers",
+    reviewsCount: "avis",
+    leaveReview: "Laisser un avis",
+    noReviews: "Aucun avis pour le moment. Soyez le premier !",
+    reviewNamePh: "Votre nom",
+    reviewServicePh: "Service reçu",
+    reviewCommentPh: "Racontez-nous votre expérience au salon",
+    reviewServiceOptions: "Coupe,Dégradé,Taille de barbe,Coupe + Barbe,Coupe enfant",
+    submitReview: "Envoyer l'avis",
+    selectStars: "Veuillez choisir une note en étoiles.",
+    thanksReview: "Merci pour votre avis !",
+    closeLabel: "Fermer",
+    starRatingLabel: "Note",
     yourShop: "Votre Salon",
     exploreShops: "Salons Partenaires",
     searchPlaceholder: "Rechercher un salon par nom ou adresse...",
@@ -518,19 +560,22 @@ const todayStr = new Date().toISOString().split('T')[0];
 
 const REVIEWS_KEY = 'foco_reviews';
 const SEED_REVIEWS = [
-  { name: 'Carlos M.', service: 'Haircut + Beard', rating: 5, comment: 'Best fade I have ever had. Clean, precise and a very relaxing atmosphere.', ts: 1 },
-  { name: 'André S.', service: 'Classic Haircut', rating: 5, comment: 'Booked in seconds and walked in with zero wait. Highly recommended.', ts: 2 },
-  { name: 'Miguel T.', service: 'Beard Trim', rating: 4, comment: 'Great attention to detail and friendly barbers.', ts: 3 }
+  { name: 'Carlos M.', service: 'Degradê', rating: 5, comment: 'O melhor degradê que já fiz. Os barbeiros são precisos e o ambiente da barbearia é muito relaxante.', ts: 1 },
+  { name: 'André S.', service: 'Corte + Barba', rating: 5, comment: 'Espaço limpo, elegante e acolhedor. Os barbeiros dão atenção a cada detalhe do corte.', ts: 2 },
+  { name: 'Miguel T.', service: 'Barba', rating: 4, comment: 'Barbeiros simpáticos e muito talentosos. Saí com a barba perfeita e adorei o ambiente.', ts: 3 }
 ];
 function loadReviews() {
+  let list = [];
   try {
-    const raw = safeGetItem(REVIEWS_KEY);
-    if (raw === null) { safeSetItem(REVIEWS_KEY, JSON.stringify(SEED_REVIEWS)); return SEED_REVIEWS.slice(); }
-    const list = JSON.parse(raw);
-    return Array.isArray(list)
-      ? list.filter(r => r && typeof r === 'object' && Number.isInteger(r.rating) && r.rating >= 1 && r.rating <= 5)
-      : [];
-  } catch (e) { return SEED_REVIEWS.slice(); }
+    const parsed = JSON.parse(safeGetItem(REVIEWS_KEY));
+    if (Array.isArray(parsed)) {
+      list = parsed.filter(r => r && typeof r === 'object' && Number.isInteger(r.rating) && r.rating >= 1 && r.rating <= 5);
+    }
+  } catch (e) {}
+  // Seeds use ts 1..3; drop stale stored copies so they always show the current text
+  list = SEED_REVIEWS.concat(list.filter(r => !(r.ts >= 1 && r.ts <= 3)));
+  safeSetItem(REVIEWS_KEY, JSON.stringify(list));
+  return list;
 }
 function saveReviews() {
   safeSetItem(REVIEWS_KEY, JSON.stringify(state.reviews));
@@ -1017,15 +1062,16 @@ function renderTestimonials() {
         <div class="font-heading text-5xl font-extrabold text-gold">${avg.toFixed(1)}<span class="text-xl text-slate-500">/5.0</span></div>
         <div>
           <div class="flex gap-0.5">${starsHTML(Math.round(avg), 'text-base')}</div>
-          <p class="text-xs text-slate-400 mt-1">${list.length} reviews</p>
+          <p class="text-xs text-slate-400 mt-1">${list.length} ${t('reviewsCount')}</p>
         </div>
       </div>
       <button data-action="open-review" class="gold-gradient text-slate-950 font-semibold text-sm px-5 py-2.5 rounded-xl hover:brightness-110 transition shadow-lg shadow-gold/10">
-        <i class="fa-solid fa-pen mr-1.5"></i>Leave a Review
+        <i class="fa-solid fa-pen mr-1.5"></i>${t('leaveReview')}
       </button>
     </div>
-    <h3 class="font-heading text-xl font-bold mb-4 flex items-center gap-2"><i class="fa-solid fa-quote-left text-gold"></i> What our clients say</h3>
-    ${list.length === 0 ? `<div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-slate-400 text-sm text-center">No reviews yet. Be the first!</div>` : `
+    <p class="text-xs font-semibold uppercase tracking-[0.25em] text-gold mb-1">${t('reviewsTag')}</p>
+    <h3 class="font-heading text-xl sm:text-2xl font-bold mb-4">${t('reviewsHeading')}</h3>
+    ${list.length === 0 ? `<div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-slate-400 text-sm text-center">${t('noReviews')}</div>` : `
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       ${list.map(r => `
         <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 card-hover">
@@ -1044,24 +1090,25 @@ function renderTestimonials() {
 }
 
 function renderReviewModal() {
+  const serviceOptions = t('reviewServiceOptions').split(',').map(s => `<option value="${escapeHTML(s)}">`).join('');
   return `
   <div class="fixed inset-0 modal-backdrop z-[60] flex items-center justify-center p-4" data-action="close-review-backdrop">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6 fade-in max-h-[90vh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="reviewTitle" onclick="event.stopPropagation()">
       <div class="flex items-center justify-between mb-4">
-        <h3 id="reviewTitle" class="font-heading text-lg font-bold"><i class="fa-solid fa-star text-gold mr-2"></i>Leave a Review</h3>
-        <button type="button" data-action="close-review" aria-label="Close" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+        <h3 id="reviewTitle"         class="font-heading text-lg font-bold"><i class="fa-solid fa-star text-gold mr-2"></i>${t('leaveReview')}</h3>
+                <button type="button" data-action="close-review" aria-label="${t('closeLabel')}" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <form id="reviewForm" class="space-y-4">
-        <input id="rvName" type="text" maxlength="50" required placeholder="Your name" aria-label="Client name" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gold" />
-        <input id="rvService" type="text" maxlength="60" required list="rvServices" placeholder="Service received" aria-label="Service received" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gold" />
-        <datalist id="rvServices"><option value="Haircut"><option value="Beard Trim"><option value="Haircut + Beard"><option value="Shave"><option value="Kids Cut"></datalist>
+                <input id="rvName" type="text" maxlength="50" required placeholder="${t('reviewNamePh')}" aria-label="${t('reviewNamePh')}" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gold" />
+                <input id="rvService" type="text" maxlength="60" required list="rvServices" placeholder="${t('reviewServicePh')}" aria-label="${t('reviewServicePh')}" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gold" />
+                <datalist id="rvServices">${serviceOptions}</datalist>
         <div>
-          <div id="rvStars" class="flex gap-1 text-2xl" role="radiogroup" aria-label="Star rating" data-rating="0">
-            ${[1, 2, 3, 4, 5].map(i => `<button type="button" data-star="${i}" role="radio" aria-checked="false" aria-label="${i} stars" class="text-slate-600 hover:text-gold transition"><i class="fa-solid fa-star"></i></button>`).join('')}
+                  <div id="rvStars" class="flex gap-1 text-2xl" role="radiogroup" aria-label="${t('starRatingLabel')}" data-rating="0">
+                    ${[1, 2, 3, 4, 5].map(i => `<button type="button" data-star="${i}" role="radio" aria-checked="false" aria-label="${i}/5" class="text-slate-600 hover:text-gold transition"><i class="fa-solid fa-star"></i></button>`).join('')}
           </div>
         </div>
-        <textarea id="rvComment" rows="4" maxlength="400" required placeholder="Tell us about your experience" aria-label="Comment" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gold resize-none"></textarea>
-        <button type="submit" class="w-full gold-gradient text-slate-950 font-semibold py-3 rounded-xl hover:brightness-110 transition">Submit Review</button>
+                <textarea id="rvComment" rows="4" maxlength="400" required placeholder="${t('reviewCommentPh')}" aria-label="${t('reviewCommentPh')}" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-gold resize-none"></textarea>
+                <button type="submit" class="w-full gold-gradient text-slate-950 font-semibold py-3 rounded-xl hover:brightness-110 transition">${t('submitReview')}</button>
       </form>
     </div>
   </div>`;
@@ -1084,12 +1131,12 @@ function handleReviewSubmit() {
   const service = document.getElementById('rvService').value.trim();
   const comment = document.getElementById('rvComment').value.trim();
   const rating = Number(document.getElementById('rvStars').dataset.rating);
-  if (!name || !service || !comment || rating < 1) { showToast(rating < 1 ? 'Please select a star rating.' : t('fillFields')); return; }
+  if (!name || !service || !comment || rating < 1) {   showToast(rating < 1 ? t('selectStars') : t('fillFields')); return; }
   state.reviews.push({ name, service, rating, comment, ts: Date.now() });
   saveReviews();
   state.reviewModal = false;
   render();
-  showToast('Thank you for your review!');
+    showToast(t('thanksReview'));
 }
 
 function renderShopPage() {
