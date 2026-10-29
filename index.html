@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>FOCO | Barber Shop Booking</title>
+<title>Nha Corti | Barber Shop Booking</title>
 <link rel="icon" type="image/jpeg" href="foco-logo.jpg" />
 
 <script src="https://cdn.tailwindcss.com"></script>
@@ -68,7 +68,7 @@
 ========================================================= */
 const DICT = {
   pt: {
-    appName: "FOCO",
+    appName: "Nha Corti",
     tagline: "Reserve seu corte com estilo",
     navClient: "Cliente",
     navDashboard: "Painel da Barbearia",
@@ -224,7 +224,7 @@ const DICT = {
     noShopsYet: "Nenhuma barbearia disponível no momento."
   },
   en: {
-    appName: "FOCO",
+    appName: "Nha Corti",
     tagline: "Book your cut in style",
     navClient: "Client",
     navDashboard: "Barbershop Dashboard",
@@ -381,7 +381,7 @@ const DICT = {
     noShopsYet: "No barbershops available right now."
   },
   fr: {
-    appName: "FOCO",
+    appName: "Nha Corti",
     tagline: "Réservez votre coupe avec style",
     navClient: "Client",
     navDashboard: "Tableau de Bord",
@@ -817,7 +817,7 @@ function makeReceiptId(apptId) {
     const code = src ? src.charCodeAt((i * 7) % src.length) + i * 13 : Math.floor(Math.random() * 1000);
     out += alphabet[code % alphabet.length];
   }
-  return 'FOCO-' + out;
+  return 'NHA-' + out;
 }
 
 function receiptBarcode(seed) {
@@ -847,7 +847,7 @@ function renderReceiptModal() {
       <div id="receiptCard" class="p-5 sm:p-6" style="background:linear-gradient(160deg,#1e293b,#0f172a);border:1px solid ${gold};border-radius:20px;color:#f8fafc;font-family:inherit">
         <div class="text-center mb-4">
           <div class="text-[10px] uppercase" style="letter-spacing:.35em;color:${gold}">VIP Receipt</div>
-          <div class="font-heading text-2xl font-bold mt-1" style="color:${gold}">FOCO BARBEARIA</div>
+          <div class="font-heading text-2xl font-bold mt-1" style="color:${gold}">NHA CORTI</div>
           ${r.shop ? `<div class="text-xs mt-1" style="color:#94a3b8">${escapeHTML(r.shop)}</div>` : ''}
         </div>
         <div class="text-center rounded-xl py-3 mb-3" style="background:rgba(212,175,55,.08);border:1px solid rgba(212,175,55,.3)">
@@ -907,7 +907,7 @@ function renderHeader() {
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between gap-4 flex-wrap">
       <div class="flex items-center gap-3">
         <div class="w-10 h-10 rounded-xl bg-slate-800 border border-gold/40 flex items-center justify-center shadow-lg shadow-gold/20 overflow-hidden">
-          <img src="foco-logo.jpg" alt="FOCO" class="w-full h-full object-contain scale-125" />
+          <img src="foco-logo.jpg" alt="Nha Corti" class="w-full h-full object-contain scale-125" />
         </div>
         <div>
           <h1 class="font-heading font-bold text-lg leading-none">${t('appName')}</h1>
@@ -948,7 +948,7 @@ function renderHeader() {
 function renderFooter() {
   return `
   <footer class="border-t border-slate-800 py-6 text-center text-xs text-slate-500">
-    <img src="foco-logo.jpg" alt="FOCO" class="inline-block w-5 h-5 object-contain rounded align-middle mr-1" /> ${t('appName')} · &copy; ${new Date().getFullYear()}
+    <img src="foco-logo.jpg" alt="Nha Corti" class="inline-block w-5 h-5 object-contain rounded align-middle mr-1" /> ${t('appName')} · &copy; ${new Date().getFullYear()}
   </footer>`;
 }
 
