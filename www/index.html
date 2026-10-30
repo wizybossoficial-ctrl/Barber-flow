@@ -92,7 +92,7 @@ const DICT = {
     paymentOptions: "Opções de pagamento",
     cashPayment: "Pagamento em dinheiro",
     mobileMoneyPayment: "Pagamento móvel",
-    phoneHint: "Use o formato +245 95 123 4567",
+    phoneHint: "Use o formato 91 123 4567",
     offlineMessage: "Você está offline. Algumas funções podem não estar disponíveis.",
     connectionError: "Não foi possível conectar. Verifique a internet e tente novamente.",
     paymentMethod: "Método de pagamento",
@@ -248,7 +248,7 @@ const DICT = {
     paymentOptions: "Payment options",
     cashPayment: "Cash payment",
     mobileMoneyPayment: "Mobile-money payment",
-    phoneHint: "Use the format +245 95 123 4567",
+    phoneHint: "Use the format 91 123 4567",
     offlineMessage: "You are offline. Some features may be unavailable.",
     connectionError: "Could not connect. Check your internet connection and try again.",
     paymentMethod: "Payment method",
@@ -405,7 +405,7 @@ const DICT = {
     paymentOptions: "Options de paiement",
     cashPayment: "Paiement en espèces",
     mobileMoneyPayment: "Paiement mobile",
-    phoneHint: "Utilisez le format +245 95 123 4567",
+    phoneHint: "Utilisez le format 91 123 4567",
     offlineMessage: "Vous êtes hors ligne. Certaines fonctions peuvent être indisponibles.",
     connectionError: "Connexion impossible. Vérifiez internet et réessayez.",
     paymentMethod: "Mode de paiement",
@@ -633,7 +633,7 @@ function escapeHTML(value) {
   }[character]));
 }
 function money(n) { return Number(n || 0).toLocaleString('fr-FR') + ' FCFA'; }
-function isValidGuineaBissauPhone(value) { return !value || /^\+245(?:\s?\d){9}$/.test(value); }
+function isValidGuineaBissauPhone(value) { return !value || /^(?:\s?\d){9}$/.test(value); }
 function connectionErrorMessage(error) { return navigator.onLine ? (error?.message || t('genericError')) : t('connectionError'); }
 function dayKeyFromDate(date) {
   return OPEN_DAYS[new Date(`${date}T00:00:00`).getDay() === 0 ? 6 : new Date(`${date}T00:00:00`).getDay() - 1];
@@ -1172,7 +1172,7 @@ function renderShopPage() {
         </div>
         ${shop.description ? `<p class="text-sm text-slate-300 mt-5 max-w-2xl">${escapeHTML(shop.description)}</p>` : ''}
         <div class="flex flex-wrap gap-3 mt-5">
-          ${shop.whatsapp ? `<a href="https://wa.me/${shop.whatsapp.replace(/\D/g, '')}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 bg-green-500/15 border border-green-500/30 text-green-400 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-green-500/25 transition"><i class="fa-brands fa-whatsapp text-lg"></i>${t('whatsappContact')}</a>` : ''}
+          ${shop.whatsapp ? `<a href="https://wa.me/245${shop.whatsapp.replace(/\D/g, '')}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 bg-green-500/15 border border-green-500/30 text-green-400 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-green-500/25 transition"><i class="fa-brands fa-whatsapp text-lg"></i>${t('whatsappContact')}</a>` : ''}
           ${shop.phone ? `<span class="inline-flex items-center gap-2 bg-slate-800 text-slate-300 px-4 py-2.5 rounded-xl text-sm"><i class="fa-solid fa-phone text-gold"></i>${escapeHTML(shop.phone)}</span>` : ''}
         </div>
         <div class="mt-5 flex flex-wrap gap-2 text-xs text-slate-300">
@@ -1232,7 +1232,7 @@ function renderBookingModal() {
         </div>
         <div>
           <label class="text-xs text-slate-400 block mb-1">${t('phoneLabel')}</label>
-          <input id="bkPhone" type="tel" pattern="\\+245(?:\\s?\\d){9}" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" placeholder="${t('phoneHint')}" />
+          <input id="bkPhone" type="tel" inputmode="numeric" maxlength="11" pattern="(?:\\s?\\d){9}" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" placeholder="${t('phoneHint')}" />
         </div>
         <div>
           <label class="text-xs text-slate-400 block mb-1">${t('paymentMethod')}</label>
@@ -1565,8 +1565,8 @@ function renderShopEditModal() {
           <textarea id="editShopDescription" rows="3" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold">${escapeHTML(shop.description || '')}</textarea>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <label class="text-xs text-slate-400 block mb-1">${t('shopPhone')}<input id="editShopPhone" type="tel" pattern="\\+245(?:\\s?\\d){9}" value="${escapeHTML(shop.phone || '')}" placeholder="${t('phoneHint')}" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" /></label>
-          <label class="text-xs text-slate-400 block mb-1">WhatsApp<input id="editShopWhatsapp" type="tel" pattern="\\+245(?:\\s?\\d){9}" value="${escapeHTML(shop.whatsapp || '')}" placeholder="${t('phoneHint')}" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" /></label>
+          <label class="text-xs text-slate-400 block mb-1">${t('shopPhone')}<input id="editShopPhone" type="tel" inputmode="numeric" maxlength="11" pattern="(?:\\s?\\d){9}" value="${escapeHTML(shop.phone || '')}" placeholder="${t('phoneHint')}" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" /></label>
+          <label class="text-xs text-slate-400 block mb-1">WhatsApp<input id="editShopWhatsapp" type="tel" inputmode="numeric" maxlength="11" pattern="(?:\\s?\\d){9}" value="${escapeHTML(shop.whatsapp || '')}" placeholder="${t('phoneHint')}" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gold" /></label>
         </div>
         <div>
           <p class="text-xs text-slate-400 block mb-2">${t('openingHours')}</p>
