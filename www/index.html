@@ -1812,6 +1812,19 @@ async function handleBookingSubmit(shopId) {
     return;
   }
 
+  const norm = v => String(v || '').slice(0, 5);
+  const knownBooked = [...(state.myAppointments || []), ...((state.dashboard && state.dashboard.appointments) || [])]
+    .some(a => a.status !== 'cancelled' && a.barber_id === barberId && a.appt_date === date && norm(a.appt_time) === time);
+  let slotBooked = knownBooked;
+  if (!slotBooked) {
+    const { data: taken } = await sb.rpc('get_taken_slots', { p_barber_id: barberId, p_date: date });
+    slotBooked = (taken || []).some(s => norm(typeof s === 'string' ? s : (s && (s.appt_time || s.time))) === time);
+  }
+  if (slotBooked) {
+    showToast(t('slotTaken'));
+    refreshTimeOptionsAsync(barberId, date);
+    return;
+  }
   const { data, error } = await sb.rpc('book_appointment', {
     p_shop_id: shopId, p_service_id: serviceId, p_barber_id: barberId,
     p_client_name: name, p_client_phone: phone, p_date: date, p_time: time
