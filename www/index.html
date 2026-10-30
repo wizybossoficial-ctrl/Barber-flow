@@ -1354,7 +1354,7 @@ function renderDashboardView() {
   const cutoffDate = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
   const cutoffStr = `${cutoffDate.getFullYear()}-${String(cutoffDate.getMonth() + 1).padStart(2, '0')}-${String(cutoffDate.getDate()).padStart(2, '0')}`;
   // Completed/cancelled appointments older than 5 days are hidden from the schedule but kept for CRM stats
-  const scheduleAppts = appointments.filter(a => !((a.status === 'completed' || a.status === 'cancelled') && a.appt_date < cutoffStr));
+  const scheduleAppts = filterLiveSchedule(appointments);
   const todayAppts = appointments.filter(a => a.appt_date === todayStr && a.status !== 'cancelled');
   const revenue = todayAppts.reduce((sum, a) => {
     const svc = services.find(s => s.id === a.service_id);
@@ -2021,6 +2021,31 @@ document.addEventListener('keydown', (e) => {
 window.addEventListener('online', render);
 window.addEventListener('offline', render);
 
+const SHOP_CLOSE_HOUR = 19;
+const CANCELLED_VISIBLE_UNTIL_HOUR = SHOP_CLOSE_HOUR + 3;
+function filterLiveSchedule(list, now = new Date()) {
+  const pad = n => String(n).padStart(2, '0');
+  const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const nowTime = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const cancelledCutoff = `${pad(CANCELLED_VISIBLE_UNTIL_HOUR)}:00`;
+  const cutoff = new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000);
+  const cutoffStr = `${cutoff.getFullYear()}-${pad(cutoff.getMonth() + 1)}-${pad(cutoff.getDate())}`;
+  return (list || []).filter(a => {
+    const time = String(a.appt_time || '').slice(0, 5);
+    if (a.status === 'cancelled') {
+      if (a.appt_date < today) return false;
+      return a.appt_date > today || nowTime < cancelledCutoff;
+    }
+    if (a.status === 'completed') return a.appt_date >= cutoffStr;
+    if (a.appt_date < today) return false;
+    return a.appt_date > today || time > nowTime;
+  });
+}
+setInterval(() => {
+  if (state.view !== 'dashboard' || !state.session || state.dashboard.loading) return;
+  const key = filterLiveSchedule(state.dashboard.appointments).map(a => a.id + a.status).join();
+  if (key !== state._scheduleKey) { state._scheduleKey = key; render(); }
+}, 60000);
 (async function init() {
   const { data } = await sb.auth.getSession();
   state.session = data.session;
