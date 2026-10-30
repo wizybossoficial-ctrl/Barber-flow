@@ -872,16 +872,24 @@ function renderReceiptModal() {
 async function downloadReceipt() {
   const card = document.getElementById('receiptCard');
   if (!card) return;
-  if (typeof html2canvas !== 'function') { window.print(); return; }
+  const screenshotHint = 'Tire um print do seu recibo VIP / Take a screenshot of your VIP receipt.';
+  const canShare = typeof navigator.share === 'function';
+  if (!canShare || typeof html2canvas !== 'function') { showToast(screenshotHint); return; }
   try {
     const canvas = await html2canvas(card, { backgroundColor: '#0f172a', scale: 2 });
-    const a = document.createElement('a');
-    a.href = canvas.toDataURL('image/png');
-    a.download = `${state.receipt.id}.png`;
-    document.body.appendChild(a); a.click(); a.remove();
-  } catch (e) { window.print(); }
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+    if (!blob) throw new Error('no-blob');
+    const file = new File([blob], `${state.receipt.id}.png`, { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'VIP Receipt' });
+    } else {
+      await navigator.share({ title: 'VIP Receipt', text: `${state.receipt.shop} · ${state.receipt.date} ${state.receipt.time} · ${state.receipt.id}` });
+    }
+  } catch (e) {
+    if (e && e.name === 'AbortError') return;
+    showToast(screenshotHint);
+  }
 }
-
 function renderConfirmDialog() {
   const cd = state.confirmDialog;
   if (!cd) return '';
