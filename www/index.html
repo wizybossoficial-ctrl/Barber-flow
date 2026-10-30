@@ -1424,7 +1424,7 @@ function renderDashboardView() {
               const svc = services.find(s => s.id === a.service_id); const brb = barbers.find(b => b.id === a.barber_id);
               return `
               <tr class="border-b border-slate-800/60 hover:bg-slate-800/30">
-                <td class="py-3 pr-3 font-medium">${escapeHTML(a.client_name)}</td>
+                <td class="py-3 pr-3 font-medium">${escapeHTML(a.client_name)}${(a.client_phone || a.phone) ? `<p class="text-xs text-slate-400 font-normal mt-0.5"><i class="fa-solid fa-phone mr-1 text-gold"></i>${escapeHTML(a.client_phone || a.phone)}</p>` : '}</td>
                 <td class="py-3 pr-3 text-slate-300">${escapeHTML(svc ? svc.name : '-')}</td>
                 <td class="py-3 pr-3 text-slate-300">${escapeHTML(brb ? brb.name : '-')}</td>
                 <td class="py-3 pr-3 text-gold font-semibold">${a.appt_date} · ${a.appt_time}</td>
