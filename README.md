@@ -50,6 +50,11 @@ http://localhost:8000/
 7. Confirm the `shops.is_open` field exists for the client-facing shop status.
 8. Confirm the `shops.description`, `shops.phone`, `shops.whatsapp`, `shops.accepts_cash`, and `shops.accepts_mobile_money` fields exist.
 9. Confirm appointments contain `payment_method` and `payment_status`, and the `set_appointment_payment` RPC is available.
+10. Apply `supabase/migrations/20261124161920_cascade_account_deletion.sql`.
+11. Deploy the `delete-account` Edge Function with `supabase functions deploy delete-account --project-ref <project-ref>`.
+12. Keep `SUPABASE_SERVICE_ROLE_KEY` server-only. Configure it as a Supabase Edge Function secret (for example with `supabase secrets set SUPABASE_SERVICE_ROLE_KEY=... --project-ref <project-ref>`); never place it in browser code or a public Vercel environment variable.
+
+The current schema has no separate owner-profile or queue table. Account deletion removes the owner's `shops` rows, which cascade to barbers, services, clients, and appointments. Shop images are uploaded under the owner UUID in the `shop-images` bucket and are removed by the Edge Function before deleting the auth user.
 
 ## Deploy
 

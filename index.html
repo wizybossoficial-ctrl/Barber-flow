@@ -595,6 +595,10 @@ const state = {
   receipt: null, // { id, name, service, barber, date, time, shop }
   reviews: loadReviews(),
   reviewModal: false,
+  accountDeleteModal: false,
+  accountDeleteConfirm: '',
+  accountDeleteLoading: false,
+  accountDeleteError: '',
   confirmDialog: null, // { title, message, onConfirm, id, token }
   shopSearch: '',
   toast: null,
@@ -767,6 +771,7 @@ function render() {
     ${state.bookingCtx ? renderBookingModal() : ''}
     ${state.crmEditingId !== null ? renderCrmModal() : ''}
     ${state.shopEditing ? renderShopEditModal() : ''}
+    ${state.accountDeleteModal ? renderAccountDeleteModal() : ''}
     ${state.confirmDialog ? renderConfirmDialog() : ''}
     ${state.receipt ? renderReceiptModal() : ''}
     ${state.reviewModal ? renderReviewModal() : ''}
@@ -1514,7 +1519,49 @@ function renderDashboardView() {
         </div>
       </div>
     </div>
+
+    <section class="mt-10 rounded-2xl border border-red-500/30 bg-red-500/5 p-5 sm:p-6" aria-labelledby="dangerZoneTitle">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 id="dangerZoneTitle" class="font-heading text-lg font-bold text-red-300">Zona de Perigo</h3>
+          <p class="mt-1 max-w-2xl text-sm text-slate-400">Eliminar permanentemente a sua conta e todos os dados desta barbearia.</p>
+        </div>
+        <button data-action="open-account-delete" class="shrink-0 rounded-xl border border-red-500/50 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-300 transition hover:bg-red-500/20">
+          <i class="fa-solid fa-trash mr-1.5"></i>Eliminar Conta e Barbearia
+        </button>
+      </div>
+    </section>
   </section>`;
+}
+
+function renderAccountDeleteModal() {
+  const shopName = typeof state.myShop?.name === 'string' ? state.myShop.name : '';
+  const confirmationText = shopName.trim() ? shopName : 'ELIMINAR';
+  return `
+  <div class="fixed inset-0 modal-backdrop z-[70] flex items-center justify-center p-4" data-action="close-account-delete-backdrop">
+    <div class="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-red-500/40 bg-slate-900 p-6 shadow-2xl fade-in" role="alertdialog" aria-modal="true" aria-labelledby="accountDeleteTitle" onclick="event.stopPropagation()">
+      <div class="mb-4 flex items-start gap-3">
+        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-500/15 text-red-400"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <div>
+          <h3 id="accountDeleteTitle" class="font-heading text-xl font-bold text-red-300">Eliminar Conta e Barbearia</h3>
+          <p class="mt-2 text-sm leading-6 text-slate-300">Esta ação eliminará permanentemente a sua conta e todos os dados da barbearia, incluindo perfis dos barbeiros, serviços, histórico de agendamentos e fila ativa. <strong class="text-red-300">Esta ação não pode ser desfeita.</strong></p>
+        </div>
+      </div>
+      ${state.accountDeleteError ? `<div class="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">${escapeHTML(state.accountDeleteError)}</div>` : ''}
+      <form id="accountDeleteForm" class="space-y-4">
+        <label for="accountDeleteConfirmInput" class="block text-sm text-slate-300">
+          Para confirmar, escreva exatamente <strong class="break-all text-white">${escapeHTML(confirmationText)}</strong>:
+        </label>
+        <input id="accountDeleteConfirmInput" type="text" required autocomplete="off" ${state.accountDeleteLoading ? 'disabled' : ''} value="${escapeHTML(state.accountDeleteConfirm)}" class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-white focus:border-red-400 focus:outline-none disabled:opacity-60" />
+        <div class="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:justify-end">
+          <button type="button" data-action="close-account-delete" ${state.accountDeleteLoading ? 'disabled' : ''} class="rounded-xl border border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-slate-800 disabled:opacity-50">Cancelar</button>
+          <button id="accountDeleteSubmit" type="submit" ${state.accountDeleteLoading || state.accountDeleteConfirm !== confirmationText ? 'disabled' : ''} class="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50">
+            ${state.accountDeleteLoading ? '<i class="fa-solid fa-circle-notch fa-spin mr-1.5"></i>A eliminar...' : 'Eliminar permanentemente'}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>`;
 }
 
 /* =========================================================
@@ -1630,6 +1677,41 @@ function attachHandlers() {
 
   app.querySelectorAll('[data-action="switch-lang"]').forEach(el =>
     el.addEventListener('click', () => { state.lang = el.dataset.lang; render(); }));
+
+  app.querySelectorAll('[data-action="open-account-delete"]').forEach(el =>
+    el.addEventListener('click', () => {
+      state.accountDeleteModal = true;
+      state.accountDeleteConfirm = '';
+      state.accountDeleteError = '';
+      render();
+      document.getElementById('accountDeleteConfirmInput')?.focus();
+    }));
+
+  app.querySelectorAll('[data-action="close-account-delete"], [data-action="close-account-delete-backdrop"]').forEach(el =>
+    el.addEventListener('click', () => {
+      if (state.accountDeleteLoading) return;
+      state.accountDeleteModal = false;
+      state.accountDeleteConfirm = '';
+      state.accountDeleteError = '';
+      render();
+    }));
+
+  const accountDeleteInput = document.getElementById('accountDeleteConfirmInput');
+  if (accountDeleteInput) accountDeleteInput.addEventListener('input', () => {
+    state.accountDeleteConfirm = accountDeleteInput.value;
+    const shopName = typeof state.myShop?.name === 'string' ? state.myShop.name : '';
+    const confirmationText = shopName.trim() ? shopName : 'ELIMINAR';
+    const submitButton = document.getElementById('accountDeleteSubmit');
+    if (submitButton) submitButton.disabled = state.accountDeleteLoading || accountDeleteInput.value !== confirmationText;
+  });
+
+  const accountDeleteForm = document.getElementById('accountDeleteForm');
+  if (accountDeleteForm) accountDeleteForm.addEventListener('submit', event => {
+    event.preventDefault();
+    const shopName = typeof state.myShop?.name === 'string' ? state.myShop.name : '';
+    if (state.accountDeleteConfirm !== (shopName.trim() ? shopName : 'ELIMINAR')) return;
+    handleDeleteAccount();
+  });
 
   app.querySelectorAll('[data-action="logout"]').forEach(el =>
     el.addEventListener('click', async () => {
@@ -2026,12 +2108,87 @@ async function handleCreateShop() {
   loadShops();
 }
 
+async function handleDeleteAccount() {
+  if (!state.session || !state.myShop || state.accountDeleteLoading) return;
+  state.accountDeleteLoading = true;
+  state.accountDeleteError = '';
+  render();
+
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/delete-account`, {
+      method: 'DELETE',
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${state.session.access_token}`
+      }
+    });
+    const result = await response.json();
+    if (!response.ok || result.success !== true) {
+      state.accountDeleteLoading = false;
+      state.accountDeleteError = result.error || 'Não foi possível eliminar a conta. Tente novamente.';
+      render();
+      return;
+    }
+  } catch (error) {
+    state.accountDeleteLoading = false;
+    state.accountDeleteError = error?.message || 'Não foi possível contactar o servidor. Verifique a ligação e tente novamente.';
+    render();
+    return;
+  }
+
+  let signOutError = null;
+  try {
+    const result = await sb.auth.signOut();
+    signOutError = result.error;
+  } catch (error) {
+    signOutError = error;
+  }
+  if (signOutError) console.error('Account was deleted, but client sign-out returned an error:', signOutError);
+  state.session = null;
+  state.myShop = null;
+  state.shops = [];
+  state.myAppointments = [];
+  state.bookingCtx = null;
+  state.crmEditingId = null;
+  state.shopPageShopId = null;
+  state.shopPageData = null;
+  state.shopEditing = false;
+  state.confirmDialog = null;
+  state.receipt = null;
+  state.reviewModal = false;
+  state.reviews = SEED_REVIEWS.slice();
+  state.dashboard = { loading: false, services: [], barbers: [], appointments: [], clients: [] };
+  state.view = 'client';
+  state.accountDeleteModal = false;
+  state.accountDeleteLoading = false;
+  state.accountDeleteConfirm = '';
+  state.toast = 'Conta e barbearia eliminadas com sucesso.';
+  render();
+  try {
+    localStorage.clear();
+  } catch (error) {
+    console.error('Could not clear local storage after account deletion:', error);
+  }
+  try {
+    sessionStorage.clear();
+  } catch (error) {
+    console.error('Could not clear session storage after account deletion:', error);
+  }
+  setTimeout(() => window.location.assign('/'), 1800);
+}
+
 /* =========================================================
    INIT
 ========================================================= */
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
-  if (state.confirmDialog) { state.confirmDialog = null; render(); }
+  if (state.accountDeleteModal && !state.accountDeleteLoading) {
+    state.accountDeleteModal = false;
+    state.accountDeleteConfirm = '';
+    state.accountDeleteError = '';
+    render();
+  }
+  else if (state.confirmDialog) { state.confirmDialog = null; render(); }
   else if (state.reviewModal) { state.reviewModal = false; render(); }
   else if (state.receipt) { state.receipt = null; render(); }
   else if (state.crmEditingId !== null) { state.crmEditingId = null; render(); }
